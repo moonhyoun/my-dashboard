@@ -200,16 +200,18 @@
   const chip=(c,t)=>'<span class="chip '+c+'">'+t+'</span>';
 
   async function load(){
-    const [cu, co, pm, pc, mc] = await Promise.all([
+    const [cu, co, pm, pc, mc, lv] = await Promise.all([
       db.from('customer_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('customer_cohort').select('*'),
       db.from('pl_monthly_v').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('pl_cost_v').select('*'),
-      db.from('marketing_channel').select('year,month,paid,spend,conversions')
+      db.from('marketing_channel').select('year,month,paid,spend,conversions'),
+      db.from('customer_ltv_v').select('*')
     ]);
     const e=cu.error||co.error||pm.error||pc.error||mc.error;
     if(e) throw e;
-    return { cust:cu.data||[], cohort:co.data||[], pl:pm.data||[], cost:pc.data||[], mkt:mc.data||[] };
+    return { cust:cu.data||[], cohort:co.data||[], pl:pm.data||[], cost:pc.data||[],
+             mkt:mc.data||[], ltv:(lv&&!lv.error)?(lv.data||[]):[] };
   }
 
   function buildYears(){
@@ -250,7 +252,11 @@
     const active=+c.active_count||0;
     const churnRate=prevActive?(+c.churn_count||0)/prevActive:0;
     const arpu=active?revenue/active:0;                     // 만원
-    const ltv=churnRate>0?arpu*cmRate/churnRate:0;          // 만원
+    /* 계산식은 customer_ltv_v 뷰에 한 곳으로 모아두었습니다 */
+    const view=(DATA.ltv||[]).find(d=>+d.year===y && +d.month===m);
+    const ltv= view && view.ltv!==null && view.ltv!==undefined
+      ? +view.ltv
+      : (churnRate>0?arpu*cmRate/churnRate:0);            // 만원
     const life=churnRate>0?1/churnRate:0;                   // 개월
 
     return { year:y, month:m,
