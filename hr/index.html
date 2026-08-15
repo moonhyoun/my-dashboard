@@ -99,15 +99,36 @@
   .bez .k{font-size:11.5px;color:var(--gray);font-weight:600}
   .bez .v{font-size:18px;font-weight:800;margin-top:4px;letter-spacing:-.02em}
   .bez .s{font-size:11.5px;color:var(--gray);margin-top:3px}
+  .ph{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .printbtn{font:inherit;font-size:12px;font-weight:600;color:var(--gray);background:#fff;
+    border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+  .printbtn:hover{color:var(--pt,var(--blue));border-color:var(--line)}
   .loading{color:var(--gray);font-size:13px;padding:20px 0}
   @media (max-width:900px){ .grid2{grid-template-columns:1fr} }
   @media (max-width:520px){ body{padding:20px 12px 48px} .panel{padding:14px} }
+
+  /* 마감 상태 안내 */
+  .pending{display:none;margin-bottom:14px;padding:11px 14px;border-radius:10px;
+    background:#F8FAFC;border:1px solid var(--line);color:#475569;font-size:12.5px;line-height:1.6}
+  .pending.on{display:block}
+  .pending b{color:var(--ink);font-weight:700}
+
+  /* 인쇄 · PDF 저장 */
+  @media print{
+    body{padding:0;font-size:11px}
+    .controls,.notice,a.back,.noprint{display:none !important}
+    .panel,.card,.sig{break-inside:avoid;page-break-inside:avoid;box-shadow:none}
+    .panel{border-color:#D8DEE6}
+    a{text-decoration:none;color:inherit}
+    .tablewrap,.cowrap,.scroller{overflow:visible !important}
+    table{min-width:0 !important}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <a class="back" href="/">← 대시보드 목록</a>
-  <header><h1>인사 대시보드</h1></header>
+  <header class="ph"><h1>인사 대시보드</h1><button class="printbtn noprint" onclick="window.print()">인쇄 · PDF 저장</button></header>
 
   <div class="controls">
     <span class="seg-label">연도</span>
@@ -123,6 +144,7 @@
   </div>
 
   <div class="notice" id="notice"></div>
+  <div class="pending" id="pending"></div>
 
   <section class="cards">
     <div class="card hero">
@@ -280,6 +302,31 @@
     const avg=sub.reduce((a,d)=>a+d.head,0)/sub.length;
     const months=sub.length;
     return { rate: avg? res/avg*(12/months)*100 : 0, resigned:res, months:months, avg:avg };
+  }
+
+
+  /* ── 마감 상태 안내 ────────────────────────────
+     오늘 기준으로 지나간 달인데 데이터가 없으면 '누락',
+     아직 진행 중이거나 갓 끝난 달이면 '마감 전'으로 구분합니다. */
+  function showPending(latestYear, latestMonth, label){
+    const el=document.getElementById('pending');
+    if(!el) return;
+    if(!latestMonth){ el.className='pending'; el.innerHTML=''; return; }
+    const now=new Date();
+    const nowY=now.getFullYear(), nowM=now.getMonth()+1, day=now.getDate();
+    const gap=(nowY-latestYear)*12 + (nowM-latestMonth);
+    if(gap<=0){ el.className='pending'; el.innerHTML=''; return; }
+
+    /* 직전 달이고 아직 10일 이전이면 정상적인 마감 대기 */
+    const closing = (gap===1 && day<=10);
+    if(closing){
+      el.className='pending on';
+      el.innerHTML='<b>'+nowM+'월은 아직 마감 전입니다.</b> 화면은 '+latestMonth+'월까지의 확정 숫자를 보여줍니다.';
+    }else{
+      el.className='pending on';
+      el.innerHTML='<b>'+latestMonth+'월 이후 '+gap+'개월치가 비어 있습니다.</b> '
+        +(label||'해당 테이블')+'에 '+nowY+'년 '+nowM+'월까지 입력했는지 확인해 주세요.';
+    }
   }
 
   /* ── 카드 ── */
@@ -531,6 +578,8 @@
       return;
     }
     const c=list.find(d=>d.month===month)||list[list.length-1];
+    (function(){ const d=DATA.hr.slice().sort((a,b)=>(a.year-b.year)||(a.month-b.month));
+      const l=d[d.length-1]; showPending(l?+l.year:0, l?+l.month:0, 'hr_monthly'); })();
     drawCards(c,list); drawHead(list,c.month); drawTenure(c.year,c.month);
     drawTeams(c); drawBreakeven(c); drawOvertime(c);
     document.getElementById('sel-year').value=String(year);
