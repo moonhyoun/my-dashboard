@@ -236,11 +236,12 @@
 
   let DATA=null, year=null, month=null, unit='man';
   const SUFFIX={man:'만원',mil:'백만원',won:'원'};
+  /* DB에는 원 단위로 저장됩니다. 보기 좋게 나눠서 표시만 바꿉니다. */
   function fmtNum(v){
     v=Number(v)||0;
-    if(unit==='man') return Math.round(v).toLocaleString('ko-KR');
-    if(unit==='mil') return (v/100).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
-    return Math.round(v*10000).toLocaleString('ko-KR');
+    if(unit==='man') return Math.round(v/10000).toLocaleString('ko-KR');
+    if(unit==='mil') return (v/1000000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+    return Math.round(v).toLocaleString('ko-KR');
   }
   const fmt=v=>fmtNum(v)+SUFFIX[unit];
   const cnt=n=>(Math.round(Number(n)||0)).toLocaleString('ko-KR');
