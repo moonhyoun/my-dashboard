@@ -89,6 +89,12 @@
   .printbtn{font:inherit;font-size:12px;font-weight:600;color:var(--gray);background:#fff;
     border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
   .printbtn:hover{color:var(--pt,var(--blue));border-color:var(--line)}
+  .terms{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 24px;
+    border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;
+    font-size:12px;color:var(--gray);line-height:1.6}
+  .terms b{color:var(--ink);font-weight:700;margin-right:6px}
+  .terms .full{grid-column:1/-1;margin-top:4px}
+  @media (max-width:620px){ .terms{grid-template-columns:1fr} }
   .loading{color:var(--gray);font-size:13px;padding:20px 0}
   @media (max-width:900px){ .grid2{grid-template-columns:1fr} }
   @media (max-width:520px){ body{padding:20px 12px 48px} .panel{padding:14px} }
@@ -159,6 +165,16 @@
     </div>
   </section>
 
+  <div class="terms">
+    <div><b>ARPU</b> 고객 한 명이 한 달에 만들어주는 매출. 매출 ÷ 활성 고객</div>
+    <div><b>이탈률</b> 지난달 고객 중 이번 달에 떠난 비율</div>
+    <div><b>LTV</b> 고객 한 명이 떠날 때까지 남기는 이익. ARPU × 공헌이익률 ÷ 이탈률</div>
+    <div><b>CAC</b> 고객 한 명을 데려오는 데 든 광고비. 광고비 ÷ 전환</div>
+    <div class="full"><b>LTV ÷ CAC</b> 한 명 데려오는 비용의 몇 배를 벌어들이는지.
+      <b>3배 이상</b>이면 건강하고, 그 아래면 광고를 쓸수록 손해에 가까워집니다.
+      높다면 광고비를 더 써서 성장을 앞당길 여지가 있다는 뜻입니다.</div>
+  </div>
+
   <div class="panel">
     <h2>신규와 이탈</h2>
     <p class="hint" id="flow-hint">위 막대는 신규 고객, 아래 막대는 이탈 고객, 선은 활성 고객 수입니다.</p>
@@ -225,6 +241,8 @@
   const won=v=>(Math.round(Number(v)||0)).toLocaleString('ko-KR')+'원';
   const pct=(v,d)=>(Number(v)||0).toFixed(d===undefined?1:d)+'%';
   const dv=(a,b)=>b?a/b:0;
+  /* 이름에 특수문자가 있어도 화면이 깨지지 않게 처리합니다 */
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const chip=(c,t)=>'<span class="chip '+c+'">'+t+'</span>';
 
   async function load(){
@@ -344,9 +362,9 @@
     const hasLtv = c.ltv>0 && isFinite(c.ltv);
     document.getElementById('c-ltv').textContent = hasLtv ? fmt(c.ltv) : '계산 불가';
     document.getElementById('c-ltv-chip').innerHTML=
-      chip('flat','ARPU '+fmtNum(c.arpu)+' / 월');
+      chip('flat','ARPU '+won(c.arpu)+' / 월');
     document.getElementById('c-ltv-f').innerHTML= hasLtv
-      ? ('ARPU × 공헌이익률 ÷ 이탈률<br>공헌이익률 '+pct(c.cmRate))
+      ? ('고객 한 명이 떠날 때까지 남기는 이익<br>ARPU × 공헌이익률 ÷ 이탈률<br>공헌이익률 '+pct(c.cmRate))
       : ('이번 달 이탈이 0이라 계산할 수 없습니다.<br>공헌이익률 '+pct(c.cmRate));
 
     const okRatio = c.ratio>0 && isFinite(c.ratio);
