@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>손익 대시보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{
+    --pt:#C2710A; --pt-deep:#8A4F07; --pt-mid:#F0D3AC; --pt-tint:#FDF6EC;
+    --neg:#C0392B; --neg-tint:#FCEEEC;
+    --ink:#0F172A; --gray:#64748B; --line:#E7EAF0; --cost:#CBD5E1;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;
+    background:#fff;color:var(--ink);-webkit-font-smoothing:antialiased;padding:28px 20px 60px}
+  .wrap{max-width:1180px;margin:0 auto}
+  a.back{font-size:13px;color:var(--gray);text-decoration:none}
+  a.back:hover{color:var(--pt)}
+  header{margin:10px 0 18px}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
+
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{font:inherit;font-size:13px;font-weight:600;color:var(--gray);
+    background:#fff;border:0;padding:8px 14px;cursor:pointer;border-left:1px solid var(--line)}
+  .seg button:first-child{border-left:0}
+  .seg button[aria-pressed="true"]{background:var(--pt);color:#fff}
+  .seg button:focus-visible{outline:2px solid var(--pt);outline-offset:-2px}
+  .seg-label{font-size:12px;color:var(--gray);font-weight:600;margin-right:2px}
+  .notice{display:none;margin-bottom:16px;padding:10px 14px;border-radius:10px;
+    background:#FFF7ED;border:1px solid #FED7AA;color:#9A3412;font-size:13px}
+  .notice.on{display:block}
+
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(5px,0.9vw,14px);margin-bottom:14px}
+  .card{border:1px solid var(--line);border-radius:clamp(9px,1.1vw,14px);
+    padding:clamp(9px,1.3vw,18px);min-height:clamp(112px,11vw,158px);min-width:0;overflow:hidden}
+  .card .label{font-size:clamp(9.5px,1.05vw,12.5px);color:var(--gray);font-weight:600;
+    margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .value{font-size:clamp(12.5px,2.05vw,24px);font-weight:800;letter-spacing:-.03em;
+    line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .foot{font-size:clamp(8.5px,0.98vw,12px);color:var(--gray);margin-top:6px;line-height:1.5}
+  .card.hero{background:var(--pt);border-color:var(--pt);color:#fff}
+  .card.hero.loss{background:var(--neg);border-color:var(--neg)}
+  .card.hero .label{color:#F6E2C6}
+  .card.hero .foot{color:#FAEEDD}
+  .card.hero .value{font-size:clamp(14px,2.7vw,32px)}
+  .card.hero .rateline{margin-top:8px}
+  .card.hero .rl{display:block;font-size:clamp(9px,1vw,12.5px);color:#F6E2C6;font-weight:600;margin-bottom:1px}
+  .card.hero .rv{display:block;font-size:clamp(16px,2.6vw,28px);font-weight:800;letter-spacing:-.02em;line-height:1.1}
+  .bar-track{height:6px;border-radius:99px;background:rgba(255,255,255,.32);margin-top:10px;overflow:hidden}
+  .bar-fill{height:100%;background:#fff;border-radius:99px;width:0;transition:width .6s ease}
+
+  .chip{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:99px;font-weight:700;
+    font-size:clamp(8.5px,0.95vw,11.5px);line-height:1.55;white-space:nowrap;border:1px solid transparent}
+  .chip.good{background:var(--pt);color:#fff}
+  .chip.bad {background:#fff;color:#475569;border-color:#CBD5E1}
+  .chip.flat{background:#F1F4F9;color:#475569}
+  .chip.alert{background:var(--neg);color:#fff}
+  .card.hero .chip.good{background:#fff;color:var(--pt-deep)}
+  .card.hero .chip.bad {background:transparent;color:#fff;border-color:rgba(255,255,255,.7)}
+  .card.hero .chip.flat{background:rgba(255,255,255,.26);color:#fff}
+
+  .panel{border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .panel h2{font-size:14px;font-weight:700}
+  .panel .hint{font-size:12px;color:var(--gray);margin-top:4px;margin-bottom:14px}
+  svg{display:block;width:100%;height:auto}
+  .grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+  .grid2 .panel{margin-bottom:14px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--gray);margin-top:10px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+  /* 게이지 아래 요약 */
+  .nums{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;
+    border-top:1px solid var(--line);padding-top:14px;margin-top:6px}
+  .nums .k{font-size:11.5px;color:var(--gray);font-weight:600}
+  .nums .v{font-size:15px;font-weight:800;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .note{margin-top:12px;border:1px solid var(--pt-mid);background:var(--pt-tint);
+    border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.6}
+  .note b{color:var(--pt-deep)}
+  .note.alert{border-color:#F2C4BE;background:var(--neg-tint)}
+  .note.alert b{color:var(--neg)}
+
+  /* 비용 표 */
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:460px}
+  th,td{padding:9px 8px;text-align:right;border-bottom:1px solid #F1F4F9;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  th{font-size:11.5px;color:var(--gray);font-weight:600;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  tfoot td{font-weight:800;border-top:1px solid var(--line);border-bottom:0;background:#FAFAFC}
+  .tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
+  .tag.fix{background:#EEF2F7;color:#475569}
+  .tag.var{background:var(--pt-tint);color:var(--pt-deep);border:1px solid var(--pt-mid)}
+  .share{display:inline-block;width:46px;height:6px;border-radius:99px;background:#F1F4F9;
+    overflow:hidden;margin-right:8px;vertical-align:1px}
+  .share i{display:block;height:100%;background:var(--pt);border-radius:99px}
+  .split{display:flex;gap:6px;align-items:center;margin-bottom:14px;font-size:12.5px}
+  .split .seg2{flex:1;height:10px;border-radius:99px;overflow:hidden;display:flex;background:#F1F4F9}
+  .split .seg2 i{display:block;height:100%}
+  .split .f{background:#94A3B8}
+  .split .v{background:var(--pt)}
+
+  /* 상품별 공헌이익 */
+  .prod{list-style:none;display:flex;flex-direction:column;gap:14px}
+  .prod .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+  .prod .nm{font-size:13.5px;font-weight:600}
+  .prod .rt{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+  .prod .rt.minus{color:var(--neg)}
+  .prod .lane{position:relative;height:12px;background:#F7F8FA;border-radius:4px}
+  .prod .zero{position:absolute;top:-3px;bottom:-3px;width:1px;background:#CBD5E1}
+  .prod .b{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--pt)}
+  .prod .b.minus{background:var(--neg)}
+  .prod .sub{font-size:11.5px;color:var(--gray);margin-top:5px}
+  .prod .sub b{color:var(--ink);font-weight:700}
+  .prod .sub b.minus{color:var(--neg)}
+
+  .loading{color:var(--gray);font-size:13px;padding:20px 0}
+  @media (max-width:900px){ .grid2{grid-template-columns:1fr} }
+  @media (max-width:520px){ body{padding:20px 12px 48px} .panel{padding:14px} }
+  @media (prefers-reduced-motion:reduce){ .bar-fill{transition:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← 대시보드 목록</a>
+  <header><h1>손익 대시보드</h1></header>
+
+  <div class="controls">
+    <span class="seg-label">연도</span>
+    <div class="seg" id="seg-year"></div>
+    <span class="seg-label" style="margin-left:8px">단위</span>
+    <div class="seg" id="seg-unit">
+      <button data-u="man" aria-pressed="true">만원</button>
+      <button data-u="mil" aria-pressed="false">백만원</button>
+      <button data-u="won" aria-pressed="false">원</button>
+    </div>
+  </div>
+
+  <div class="notice" id="notice"></div>
+
+  <section class="cards">
+    <div class="card hero" id="card-profit">
+      <div class="label" id="c-op-l">영업이익</div>
+      <div class="value" id="c-op">–</div>
+      <div class="bar-track"><div class="bar-fill" id="c-op-bar"></div></div>
+      <div class="rateline"><span class="rl">목표 대비</span><span class="rv" id="c-op-rate">–</span></div>
+      <div id="c-op-chip"></div>
+    </div>
+    <div class="card">
+      <div class="label">영업이익률</div>
+      <div class="value" id="c-margin">–</div>
+      <div id="c-margin-chip"></div>
+      <div class="foot" id="c-margin-f">–</div>
+    </div>
+    <div class="card">
+      <div class="label">손익분기 달성률</div>
+      <div class="value" id="c-bep">–</div>
+      <div id="c-bep-chip"></div>
+      <div class="foot" id="c-bep-f">–</div>
+    </div>
+    <div class="card">
+      <div class="label">총비용</div>
+      <div class="value" id="c-cost">–</div>
+      <div id="c-cost-chip"></div>
+      <div class="foot" id="c-cost-f">–</div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h2>손익 구조</h2>
+      <p class="hint" id="wf-hint">매출에서 비용이 차례로 빠지고 영업이익이 남습니다.</p>
+      <div id="waterfall" class="loading">불러오는 중…</div>
+      <div class="legend">
+        <span><i style="background:var(--pt)"></i>매출·영업이익</span>
+        <span><i style="background:var(--cost)"></i>비용</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>손익분기 달성률</h2>
+      <p class="hint">100%면 본전입니다.</p>
+      <div id="gauge" class="loading">불러오는 중…</div>
+      <div class="nums" id="gauge-nums"></div>
+      <div id="gauge-note"></div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h2>비용 순위</h2>
+      <p class="hint" id="cost-hint">금액이 큰 순서입니다.</p>
+      <div class="split" id="cost-split"></div>
+      <div class="tablewrap" id="cost-table"></div>
+    </div>
+    <div class="panel">
+      <h2>상품별 공헌이익</h2>
+      <p class="hint" id="prod-hint">매출에서 변동비를 뺀 뒤 남는 비율입니다.</p>
+      <ol class="prod" id="prod-list"><li class="loading">불러오는 중…</li></ol>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  /* ── 연결 정보 ─────────────────────────────────────
+     아래 두 이름을 URL / KEY 로 바꾸지 마세요. 브라우저가 쓰는 이름과 충돌합니다. */
+  const SUPABASE_URL = 'https://abgpkybrwtpzflkchchu.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_4LUZJYwgyDYPb-EzzpDHRw_FwEUvJ1e';
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth:{ persistSession:false, autoRefreshToken:false }
+  });
+
+  let DATA=null, year=null, unit='man';
+
+  const SUFFIX={man:'만원',mil:'백만원',won:'원'};
+  function fmtNum(v){
+    v=Number(v)||0;
+    if(unit==='man') return Math.round(v).toLocaleString('ko-KR');
+    if(unit==='mil') return (v/100).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+    return Math.round(v*10000).toLocaleString('ko-KR');
+  }
+  const fmt=v=>fmtNum(v)+SUFFIX[unit];
+  const pct=(v,d)=>(Number(v)||0).toFixed(d===undefined?1:d)+'%';
+  function fmtAxis(v){
+    if(unit==='won'){
+      const w=(Number(v)||0)*10000;
+      if(w>=100000000) return (w/100000000).toFixed(1).replace(/\.0$/,'')+'억';
+      return Math.round(w/10000).toLocaleString('ko-KR')+'만';
+    }
+    return fmtNum(v);
+  }
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const dv=(a,b)=>b?a/b:0;
+  const chip=(cls,txt)=>'<span class="chip '+cls+'">'+txt+'</span>';
+  function momText(now,before,f,suffix){
+    if(before===null||before===undefined||!isFinite(before)) return '전월 —';
+    const d=now-before;
+    if(Math.abs(d)<0.0001) return '전월 동일';
+    return '전월 '+(d>0?'▲':'▼')+' '+f(Math.abs(d))+(suffix||'');
+  }
+
+  /* ── 데이터 ─────────────────────────────────────── */
+  async function load(){
+    const [m,c,g]=await Promise.all([
+      db.from('pl_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
+      db.from('pl_cost').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
+      db.from('pl_margin').select('*').order('year',{ascending:true}).order('month',{ascending:true})
+    ]);
+    if(m.error||c.error||g.error) throw (m.error||c.error||g.error);
+    let rank=[];
+    try{
+      const r=await db.from('sales_rank').select('*');   // 상품 매출 참고용 (없어도 동작)
+      if(!r.error) rank=r.data||[];
+    }catch(e){ rank=[]; }
+    return { monthly:m.data||[], cost:c.data||[], margin:g.data||[], rank:rank };
+  }
+
+  function buildYears(){
+    const set=new Set();
+    DATA.monthly.forEach(d=>set.add(+d.year));
+    const years=[...set].filter(Boolean).sort((a,b)=>b-a);
+    const ty=new Date().getFullYear();
+    year=years.includes(ty)?ty:(years[0]??ty);
+    document.getElementById('seg-year').innerHTML=
+      years.map(y=>'<button data-y="'+y+'" aria-pressed="'+(y===year)+'">'+y+'년</button>').join('');
+  }
+
+  /* 한 달치 손익 계산 */
+  function calc(m){
+    const rows=DATA.cost.filter(d=>+d.year===+m.year && +d.month===+m.month);
+    const sum=f=>rows.filter(f).reduce((a,d)=>a+(+d.amount||0),0);
+    const revenue=+m.revenue||0;
+    const cogs=sum(d=>d.category==='매출원가');
+    const sga =sum(d=>d.category==='판관비');
+    const etc =sum(d=>d.category==='기타');
+    const total=cogs+sga+etc;
+    const variable=sum(d=>d.cost_type==='변동');
+    const fixed   =sum(d=>d.cost_type==='고정');
+    const profit=revenue-total;
+    const cm=revenue-variable;                 // 공헌이익
+    const cmRate=dv(cm,revenue);               // 공헌이익률 (소수)
+    const bepRevenue=cmRate>0?fixed/cmRate:0;  // 손익분기 매출
+    return {
+      month:+m.month, revenue, cogs, sga, etc, total, variable, fixed, profit,
+      margin:dv(profit,revenue)*100, cm, cmRate:cmRate*100, bepRevenue,
+      bepRate:bepRevenue>0?dv(revenue,bepRevenue)*100:0,
+      safety:bepRevenue>0?dv(revenue-bepRevenue,revenue)*100:0,
+      targetProfit:+m.target_profit||0, targetMargin:+m.target_margin||0,
+      rows:rows
+    };
+  }
+
+  /* ── 카드 ───────────────────────────────────────── */
+  function drawCards(c,p){
+    const int0=v=>Math.round(v).toLocaleString('ko-KR');
+    document.getElementById('card-profit').className='card hero'+(c.profit<0?' loss':'');
+    document.getElementById('c-op-l').textContent=c.month+'월 영업이익';
+    document.getElementById('c-op').textContent=fmt(c.profit);
+    const opRate=c.targetProfit?dv(c.profit,c.targetProfit)*100:0;
+    document.getElementById('c-op-rate').textContent=c.targetProfit?pct(opRate):'목표 없음';
+    document.getElementById('c-op-chip').innerHTML=
+      chip('flat',momText(c.profit,p?p.profit:null,fmtNum,SUFFIX[unit]));
+    const b=document.getElementById('c-op-bar');
+    b.style.width='0%';
+    requestAnimationFrame(()=>{ b.style.width=Math.max(0,Math.min(100,opRate))+'%'; });
+
+    document.getElementById('c-margin').textContent=pct(c.margin);
+    if(c.targetMargin){
+      const gap=c.margin-c.targetMargin;
+      document.getElementById('c-margin-chip').innerHTML=
+        chip(gap>=0?'good':'bad','목표 '+(gap>=0?'▲':'▼')+' '+Math.abs(gap).toFixed(1)+'%p');
+    }else document.getElementById('c-margin-chip').innerHTML='';
+    document.getElementById('c-margin-f').innerHTML=
+      (c.targetMargin?('목표 '+c.targetMargin+'%<br>'):'')
+      +'공헌이익률 '+pct(c.cmRate)+'<br>'
+      +momText(c.margin,p?p.margin:null,v=>v.toFixed(1),'%p');
+
+    document.getElementById('c-bep').textContent=pct(c.bepRate);
+    document.getElementById('c-bep-chip').innerHTML=
+      c.safety>=0 ? chip('good','안전마진 '+c.safety.toFixed(1)+'%')
+                  : chip('alert','적자 구간');
+    document.getElementById('c-bep-f').innerHTML=
+      '손익분기 매출 '+fmt(c.bepRevenue)+'<br>고정비 '+fmtNum(c.fixed)+'<br>'
+      +momText(c.bepRate,p?p.bepRate:null,v=>v.toFixed(1),'%p');
+
+    document.getElementById('c-cost').textContent=fmt(c.total);
+    document.getElementById('c-cost-chip').innerHTML=
+      chip('flat',momText(c.total,p?p.total:null,fmtNum,SUFFIX[unit]));
+    document.getElementById('c-cost-f').innerHTML=
+      '고정 '+fmtNum(c.fixed)+' · 변동 '+fmtNum(c.variable)+'<br>매출 대비 '+pct(dv(c.total,c.revenue)*100);
+  }
+
+  /* ── 폭포 그래프 ────────────────────────────────── */
+  function drawWaterfall(c){
+    const box=document.getElementById('waterfall');
+    box.className='';
+    const cw=box.clientWidth||620;
+    const narrow=cw<480;
+    const W=narrow?400:660, H=narrow?270:320;
+    const PL=narrow?6:52, PR=narrow?6:14, PT=narrow?30:38, PB=narrow?44:46;
+    const iw=W-PL-PR, ih=H-PT-PB;
+
+    const steps=[
+      {label:'매출',     type:'total', value:c.revenue},
+      {label:'매출원가', type:'down',  value:c.cogs},
+      {label:'판관비',   type:'down',  value:c.sga},
+      {label:'기타비용', type:'down',  value:c.etc},
+      {label:'영업이익', type:'total', value:c.profit}
+    ];
+    const hi=Math.max(c.revenue,0)*1.12;
+    const lo=Math.min(0,c.profit)*1.25;
+    const y=v=>PT+ih-((v-lo)/((hi-lo)||1))*ih;
+
+    const slot=iw/steps.length, bw=Math.min(narrow?42:64,slot*0.62);
+    let s='';
+    s+='<text x="'+(narrow?2:4)+'" y="'+(narrow?12:16)+'" font-size="'+(narrow?8:11)+'" fill="#94A3B8">단위: '+SUFFIX[unit]+'</text>';
+
+    if(!narrow){
+      for(let i=0;i<=4;i++){
+        const v=lo+(hi-lo)/4*i, yy=y(v);
+        s+='<line x1="'+PL+'" y1="'+yy+'" x2="'+(PL+iw)+'" y2="'+yy+'" stroke="#EDF0F5"/>';
+        s+='<text x="'+(PL-8)+'" y="'+(yy+4)+'" text-anchor="end" font-size="10.5" fill="#94A3B8">'+fmtAxis(v)+'</text>';
+      }
+    }
+    const y0=y(0);
+    s+='<line x1="'+PL+'" y1="'+y0+'" x2="'+(PL+iw)+'" y2="'+y0+'" stroke="#CBD5E1"/>';
+
+    let run=0, prevX=null, prevY=null;
+    steps.forEach(function(st,i){
+      const cx=PL+slot*i+slot/2;
+      let top,bot,val;
+      if(st.type==='total'){ val=st.value; top=y(Math.max(0,val)); bot=y(Math.min(0,val)); run=val; }
+      else { val=-st.value; const from=run, to=run+val; run=to; top=y(Math.max(from,to)); bot=y(Math.min(from,to)); }
+      const h=Math.max(1,bot-top);
+      const fill = st.type==='total' ? (st.value<0?'var(--neg)':'var(--pt)') : 'var(--cost)';
+      s+='<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+h+'" rx="3" fill="'+fill+'"/>';
+
+      const txt=(st.type==='down'?'−':'')+fmtNum(st.value<0?-st.value:st.value);
+      const tc = st.type==='total' ? (st.value<0?'#C0392B':'#8A4F07') : '#475569';
+      s+='<text x="'+cx+'" y="'+(top-7)+'" text-anchor="middle" font-size="'+(narrow?9:11)+'" font-weight="800" fill="'+tc+'">'+txt+'</text>';
+      s+='<text x="'+cx+'" y="'+(H-(narrow?26:26))+'" text-anchor="middle" font-size="'+(narrow?9:11)+'" font-weight="600" fill="#64748B">'+st.label+'</text>';
+      if(st.type!=='down'){
+        const r=dv(st.value,c.revenue)*100;
+        s+='<text x="'+cx+'" y="'+(H-(narrow?10:10))+'" text-anchor="middle" font-size="'+(narrow?8.5:10)+'" fill="#94A3B8">'+(i===0?'100%':pct(r)) +'</text>';
+      }else{
+        s+='<text x="'+cx+'" y="'+(H-(narrow?10:10))+'" text-anchor="middle" font-size="'+(narrow?8.5:10)+'" fill="#94A3B8">'+pct(dv(st.value,c.revenue)*100)+'</text>';
+      }
+      if(prevX!==null && st.type==='down'){
+        s+='<line x1="'+prevX+'" y1="'+prevY+'" x2="'+(cx-bw/2)+'" y2="'+prevY+'" stroke="#CBD5E1" stroke-dasharray="3 3"/>';
+      }
+      prevX=cx+bw/2; prevY=y(run);
+    });
+
+    box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="손익 구조 폭포 그래프">'+s+'</svg>';
+    document.getElementById('wf-hint').textContent=
+      year+'년 '+c.month+'월 · 매출에서 비용이 차례로 빠지고 영업이익이 남습니다. 아래 %는 매출 대비 비중입니다.';
+  }
+
+  /* ── 반원 게이지 ────────────────────────────────── */
+  function drawGauge(c){
+    const box=document.getElementById('gauge');
+    box.className='';
+    const W=300,H=186,cx=150,cy=150,r=112,MAX=150;
+    const val=Math.max(0,Math.min(MAX,c.bepRate));
+    const pol=v=>{ const a=Math.PI*(1-v/MAX); return [cx+r*Math.cos(a), cy-r*Math.sin(a)]; };
+    const arc=(from,to,color,w)=>{
+      const [x1,y1]=pol(from), [x2,y2]=pol(to);
+      const large=(to-from)/MAX>0.5?1:0;
+      return '<path d="M '+x1+' '+y1+' A '+r+' '+r+' 0 '+large+' 1 '+x2+' '+y2+
+             '" fill="none" stroke="'+color+'" stroke-width="'+w+'" stroke-linecap="round"/>';
+    };
+    let s=arc(0,MAX,'#F1F4F9',20);
+    if(val>0) s+=arc(0,val,c.bepRate>=100?'var(--pt)':'var(--neg)',20);
+
+    /* 100% 지점 표시 */
+    const a=Math.PI*(1-100/MAX);
+    s+='<line x1="'+(cx+(r-14)*Math.cos(a))+'" y1="'+(cy-(r-14)*Math.sin(a))+
+       '" x2="'+(cx+(r+14)*Math.cos(a))+'" y2="'+(cy-(r+14)*Math.sin(a))+
+       '" stroke="#0F172A" stroke-width="2"/>';
+    s+='<text x="'+(cx+(r+22)*Math.cos(a))+'" y="'+(cy-(r+20)*Math.sin(a))+
+       '" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0F172A">본전 100%</text>';
+
+    [0,50,100,150].forEach(function(t){
+      const ta=Math.PI*(1-t/MAX);
+      s+='<text x="'+(cx+(r-32)*Math.cos(ta))+'" y="'+(cy-(r-32)*Math.sin(ta)+4)+
+         '" text-anchor="middle" font-size="9.5" fill="#94A3B8">'+t+'</text>';
+    });
+
+    s+='<text x="'+cx+'" y="'+(cy-14)+'" text-anchor="middle" font-size="34" font-weight="800" fill="'+
+       (c.bepRate>=100?'var(--pt)':'var(--neg)')+'">'+c.bepRate.toFixed(0)+'%</text>';
+    s+='<text x="'+cx+'" y="'+(cy+8)+'" text-anchor="middle" font-size="11.5" fill="#64748B">손익분기 달성률</text>';
+
+    box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="손익분기 달성률 게이지">'+s+'</svg>';
+
+    document.getElementById('gauge-nums').innerHTML=
+      '<div><div class="k">손익분기 매출</div><div class="v">'+fmt(c.bepRevenue)+'</div></div>'
+      +'<div><div class="k">안전마진율</div><div class="v" style="color:'+(c.safety>=0?'var(--pt)':'var(--neg)')+'">'
+      +c.safety.toFixed(1)+'%</div></div>';
+
+    const drop=c.revenue-c.bepRevenue;
+    document.getElementById('gauge-note').innerHTML= c.safety>=0
+      ? '<div class="note">매출이 <b>'+fmt(drop)+'</b>(=<b>'+c.safety.toFixed(1)+'%</b>) 줄어들면 적자로 돌아섭니다.<br>'
+        +'고정비 '+fmt(c.fixed)+'를 공헌이익률 '+pct(c.cmRate)+'로 나눈 값이 손익분기 매출입니다.</div>'
+      : '<div class="note alert">이미 <b>적자 구간</b>입니다. 흑자로 돌아서려면 매출이 <b>'+fmt(-drop)+'</b> 더 필요합니다.</div>';
+  }
+
+  /* ── 비용 순위 ──────────────────────────────────── */
+  function drawCosts(c){
+    const rows=c.rows.slice().sort((a,b)=>(+b.amount||0)-(+a.amount||0));
+    const top=Math.max.apply(null,rows.map(d=>+d.amount||0).concat([1]));
+    const body=rows.map(function(d){
+      const amt=+d.amount||0, share=dv(amt,c.total)*100;
+      const isVar=d.cost_type==='변동';
+      return '<tr><td>'+esc(d.item)+'</td>'
+        +'<td style="text-align:left"><span class="tag '+(isVar?'var':'fix')+'">'+esc(d.cost_type)+'</span></td>'
+        +'<td style="text-align:left;color:#94A3B8;font-size:12px">'+esc(d.category)+'</td>'
+        +'<td>'+fmtNum(amt)+'</td>'
+        +'<td><span class="share"><i style="width:'+(amt/top*100)+'%"></i></span>'+pct(share)+'</td></tr>';
+    }).join('');
+    document.getElementById('cost-table').innerHTML=
+      '<table><thead><tr><th>항목</th><th style="text-align:left">구분</th>'
+      +'<th style="text-align:left">분류</th><th>금액 ('+SUFFIX[unit]+')</th><th>비중</th></tr></thead>'
+      +'<tbody>'+body+'</tbody>'
+      +'<tfoot><tr><td>총비용</td><td></td><td></td><td>'+fmtNum(c.total)+'</td><td>100.0%</td></tr></tfoot></table>';
+
+    const fp=dv(c.fixed,c.total)*100, vp=100-fp;
+    document.getElementById('cost-split').innerHTML=
+      '<span style="color:#475569;font-weight:700;white-space:nowrap">고정 '+fp.toFixed(0)+'%</span>'
+      +'<span class="seg2"><i class="f" style="width:'+fp+'%"></i><i class="v" style="width:'+vp+'%"></i></span>'
+      +'<span style="color:var(--pt-deep);font-weight:700;white-space:nowrap">변동 '+vp.toFixed(0)+'%</span>';
+    document.getElementById('cost-hint').textContent=
+      year+'년 '+c.month+'월 · '+rows.length+'개 항목 · 고정비가 클수록 매출이 흔들릴 때 이익이 크게 출렁입니다.';
+  }
+
+  /* ── 상품별 공헌이익 ────────────────────────────── */
+  function drawProducts(c){
+    const el=document.getElementById('prod-list');
+    const rows=DATA.margin.filter(d=>+d.year===year && +d.month===c.month);
+    if(!rows.length){ el.innerHTML='<li class="loading">데이터가 없습니다.</li>'; return; }
+
+    const revOf={};
+    DATA.rank.filter(d=>+d.year===year && +d.month===c.month && d.kind==='product')
+             .forEach(d=>{ revOf[d.name]=+d.amount||0; });
+    const hasRev=Object.keys(revOf).length>0;
+
+    const list=rows.slice().sort((a,b)=>(+b.margin_rate||0)-(+a.margin_rate||0));
+    const rates=list.map(d=>+d.margin_rate||0);
+    const posMax=Math.max.apply(null,rates.concat([0]));
+    const negMax=Math.max.apply(null,rates.map(v=>v<0?-v:0).concat([0]));
+    const zero=negMax>0?(negMax/(negMax+posMax))*100:0;
+
+    el.innerHTML=list.map(function(d){
+      const r=+d.margin_rate||0, minus=r<0;
+      const w = minus ? (negMax? (-r/negMax)*zero : 0) : (posMax? (r/posMax)*(100-zero) : 0);
+      const style = minus ? ('right:'+(100-zero)+'%;width:'+w+'%') : ('left:'+zero+'%;width:'+w+'%');
+      const rev=revOf[d.product];
+      const cmAmt=rev!==undefined?rev*r/100:null;
+      const sub = rev===undefined
+        ? '<span class="sub">매출 자료 없음 · 비율만 표시</span>'
+        : '<span class="sub">매출 '+fmtNum(rev)+' → 공헌이익 <b'+(cmAmt<0?' class="minus"':'')+'>'
+          +(cmAmt<0?'−':'')+fmtNum(Math.abs(cmAmt))+'</b> '+SUFFIX[unit]+'</span>';
+      return '<li><div class="top"><span class="nm">'+esc(d.product)+'</span>'
+        +'<span class="rt'+(minus?' minus':'')+'">'+r.toFixed(1)+'%</span></div>'
+        +'<div class="lane"><span class="zero" style="left:'+zero+'%"></span>'
+        +'<span class="b'+(minus?' minus':'')+'" style="'+style+'"></span></div>'
+        +sub+'</li>';
+    }).join('');
+
+    document.getElementById('prod-hint').textContent=
+      year+'년 '+c.month+'월 · 마이너스는 팔수록 손해인 상품입니다.'
+      + (hasRev?'':' 영업 대시보드의 품목명과 이름이 같아야 금액이 표시됩니다.');
+  }
+
+  /* ── 전체 그리기 ────────────────────────────────── */
+  function render(){
+    if(!DATA) return;
+    const ms=DATA.monthly.filter(d=>+d.year===year).sort((a,b)=>a.month-b.month);
+    if(!ms.length){
+      ['waterfall','gauge','cost-table','prod-list'].forEach(id=>{
+        const e=document.getElementById(id); e.className=''; e.innerHTML='<p class="loading">데이터가 없습니다.</p>';
+      });
+      syncButtons(); return;
+    }
+    const c=calc(ms[ms.length-1]);
+    const p=ms.length>1?calc(ms[ms.length-2]):null;
+    drawCards(c,p);
+    drawWaterfall(c);
+    drawGauge(c);
+    drawCosts(c);
+    drawProducts(c);
+    syncButtons();
+  }
+  function syncButtons(){
+    document.querySelectorAll('#seg-year button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.y===year));
+    document.querySelectorAll('#seg-unit button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.u===unit));
+  }
+
+  document.getElementById('seg-year').addEventListener('click',function(e){
+    const b=e.target.closest('button'); if(!b) return; year=+b.dataset.y; render();
+  });
+  document.getElementById('seg-unit').addEventListener('click',function(e){
+    const b=e.target.closest('button'); if(!b) return; unit=b.dataset.u; render();
+  });
+  let rt; window.addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(render,200); });
+
+  /* ── 실행 ───────────────────────────────────────── */
+  (async function(){
+    try{
+      DATA=await load();
+      if(!DATA.monthly.length) throw new Error('pl_monthly 테이블이 비어 있습니다.');
+    }catch(e){
+      const n=document.getElementById('notice');
+      n.className='notice on';
+      n.textContent='데이터를 불러오지 못해 예시 값을 보여주고 있습니다. ('+(e.message||e)+') — SQL을 실행했는지, 읽기 권한(RLS)이 열려 있는지 확인해 주세요.';
+      const mon=[[2,6200,700],[3,6900,800],[4,7100,850],[5,7310,900],[6,8050,1000],[7,8470,1100]];
+      const ads={2:742,3:815,4:906,5:1024,6:1138,7:1240};
+      const labor={2:1380,3:1400,4:1430,5:1450,6:1490,7:1520};
+      const cost=[], margin=[];
+      mon.forEach(function(m){
+        const rev=m[1];
+        cost.push({year:2026,month:m[0],category:'매출원가',item:'상품·원재료비',cost_type:'변동',amount:Math.round(rev*0.36)});
+        cost.push({year:2026,month:m[0],category:'매출원가',item:'외주 용역비',cost_type:'변동',amount:Math.round(rev*0.1334)});
+        cost.push({year:2026,month:m[0],category:'기타',item:'지급수수료',cost_type:'변동',amount:Math.round(rev*0.0248)});
+        cost.push({year:2026,month:m[0],category:'판관비',item:'광고선전비',cost_type:'변동',amount:ads[m[0]]});
+        cost.push({year:2026,month:m[0],category:'판관비',item:'인건비',cost_type:'고정',amount:labor[m[0]]});
+        cost.push({year:2026,month:m[0],category:'기타',item:'임대료',cost_type:'고정',amount:380});
+        cost.push({year:2026,month:m[0],category:'기타',item:'감가상각비',cost_type:'고정',amount:160});
+        [['기업용 솔루션',42],['프리미엄 컨설팅',28],['고급형 플랜',15],['연간 유지보수',8],['추가 좌석',-5]]
+          .forEach(p=>margin.push({year:2026,month:m[0],product:p[0],margin_rate:p[1]}));
+      });
+      DATA={
+        monthly:mon.map(m=>({year:2026,month:m[0],revenue:m[1],target_profit:m[2],target_margin:12})),
+        cost:cost, margin:margin, rank:[]
+      };
+    }
+    buildYears();
+    render();
+  })();
+</script>
+</body>
+</html>
