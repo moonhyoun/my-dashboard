@@ -268,11 +268,12 @@
 
   /* ── 숫자 표기 ──────────────────────────────────── */
   const SUFFIX={man:'만원',mil:'백만원',won:'원'};
+  /* DB에는 원 단위로 저장됩니다. 보기 좋게 나눠서 표시만 바꿉니다. */
   function fmtNum(v){
     v=Number(v)||0;
-    if(unit==='man') return Math.round(v).toLocaleString('ko-KR');
-    if(unit==='mil') return (v/100).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
-    return Math.round(v*10000).toLocaleString('ko-KR');
+    if(unit==='man') return Math.round(v/10000).toLocaleString('ko-KR');
+    if(unit==='mil') return (v/1000000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+    return Math.round(v).toLocaleString('ko-KR');
   }
   const fmt=v=>fmtNum(v)+SUFFIX[unit];
   const cnt=n=>(Math.round(Number(n)||0)).toLocaleString('ko-KR');
@@ -280,7 +281,7 @@
   const pct=(v,d)=>(Number(v)||0).toFixed(d===undefined?1:d)+'%';
   function fmtAxis(v){
     if(unit==='won'){
-      const w=(Number(v)||0)*10000;
+      const w=Number(v)||0;
       if(w>=100000000) return (w/100000000).toFixed(1).replace(/\.0$/,'')+'억';
       return Math.round(w/10000).toLocaleString('ko-KR')+'만';
     }
@@ -395,12 +396,12 @@
   /* ── 카드 ───────────────────────────────────────── */
   function drawCards(cur, prev, curAll, cfg, py){
     const roas=div(cur.revenue,cur.spend)*100;
-    const cac =div(cur.spend*10000,cur.conversions);
-    const cpc =div(cur.spend*10000,cur.clicks);
+    const cac =div(cur.spend,cur.conversions);
+    const cpc =div(cur.spend,cur.clicks);
     const cvr =div(cur.conversions,cur.clicks)*100;
     const rate=cfg.budget?div(cur.spend,cfg.budget)*100:0;
     const pRoas=prev?div(prev.revenue,prev.spend)*100:null;
-    const pCac =prev?div(prev.spend*10000,prev.conversions):null;
+    const pCac =prev?div(prev.spend,prev.conversions):null;
     const int0=v=>Math.round(v).toLocaleString('ko-KR');
 
     document.getElementById('c-spend-l').textContent=cur.month+'월 광고비';
@@ -427,7 +428,7 @@
     /* CAC — LTV 대비 배수를 칩으로 */
     document.getElementById('c-cac').textContent=cur.conversions?won(cac):'–';
     if(cfg.ltv>0 && cac>0 && isFinite(cfg.ltv)){
-      const x=div(cfg.ltv*10000,cac);
+      const x=div(cfg.ltv,cac);
       document.getElementById('c-cac-chip').innerHTML=
         chip(x>=3?'good':'bad','LTV 대비 '+x.toFixed(1)+'배');
     }else{
@@ -489,8 +490,8 @@
       return '<tr class="ch'+(openChannel===d.channel?' on':'')+'" data-ch="'+esc(d.channel)+'">'
         +'<td>'+esc(d.channel)+'</td>'
         +'<td>'+fmtNum(s)+'</td><td>'+cnt(im)+'</td><td>'+cnt(ck)+'</td>'
-        +'<td>'+pct(div(ck,im)*100,2)+'</td><td>'+won(div(s*10000,ck))+'</td>'
-        +'<td>'+cnt(cv)+'</td><td>'+won(div(s*10000,cv))+'</td>'
+        +'<td>'+pct(div(ck,im)*100,2)+'</td><td>'+won(div(s,ck))+'</td>'
+        +'<td>'+cnt(cv)+'</td><td>'+won(div(s,cv))+'</td>'
         +'<td>'+pct(roas,0)+flag+'</td>'
         +'<td>'+trend3(chYear,d.channel,curMonth)+'</td></tr>';
     }
@@ -507,8 +508,8 @@
     let body=paid.map(paidRow).join('');
     body+='<tr class="sub"><td>유료 광고 소계<span class="sub2"> · 전체 합산 재계산</span></td>'
       +'<td>'+fmtNum(tp.spend)+'</td><td>'+cnt(tp.impressions)+'</td><td>'+cnt(tp.clicks)+'</td>'
-      +'<td>'+pct(div(tp.clicks,tp.impressions)*100,2)+'</td><td>'+won(div(tp.spend*10000,tp.clicks))+'</td>'
-      +'<td>'+cnt(tp.conversions)+'</td><td>'+won(div(tp.spend*10000,tp.conversions))+'</td>'
+      +'<td>'+pct(div(tp.clicks,tp.impressions)*100,2)+'</td><td>'+won(div(tp.spend,tp.clicks))+'</td>'
+      +'<td>'+cnt(tp.conversions)+'</td><td>'+won(div(tp.spend,tp.conversions))+'</td>'
       +'<td>'+pct(div(tp.revenue,tp.spend)*100,0)+'</td><td></td></tr>';
 
     if(unpaid.length){
@@ -623,7 +624,7 @@
       document.getElementById('detail-stats').innerHTML=
         '<div><div class="k">누적 광고비</div><div class="v">'+fmt(t.spend)+'</div></div>'
         +'<div><div class="k">누적 전환</div><div class="v">'+cnt(t.conversions)+'건</div></div>'
-        +'<div><div class="k">평균 CPA</div><div class="v">'+won(div(t.spend*10000,t.conversions))+'</div></div>';
+        +'<div><div class="k">평균 CPA</div><div class="v">'+won(div(t.spend,t.conversions))+'</div></div>';
     }else{
       document.getElementById('detail-chart').innerHTML=
         '<p class="loading">광고비가 없어 ROAS 그래프를 그리지 않습니다. 아래 누적 수치를 참고하세요.</p>';
@@ -763,7 +764,7 @@
     }catch(e){
       const n=document.getElementById('notice');
       n.className='notice on';
-      n.textContent='데이터를 불러오지 못해 예시 값을 보여주고 있습니다. ('+(e.message||e)+') — SQL을 실행했는지, 읽기 권한(RLS)이 열려 있는지 확인해 주세요.';
+      n.textContent='데이터를 불러오지 못해 예시 값을 보여주고 있습니다. (예시 값은 실제 단위와 다를 수 있습니다.) ('+(e.message||e)+') — SQL을 실행했는지, 읽기 권한(RLS)이 열려 있는지 확인해 주세요.';
       const mon=[[2,742,2731],[3,815,3195],[4,906,3452],[5,1024,4137],[6,1138,4506],[7,1240,5696],[8,780,3623]];
       const jul=[['네이버 검색',412,862400,24180,148,2587],['메타 광고',368,1240600,18420,96,1733],
                  ['구글 검색',214,418900,11240,58,832],['인스타 릴스',156,2108300,9860,34,386],
