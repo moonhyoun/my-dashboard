@@ -324,19 +324,19 @@
   let perProduct = 'month';
 
   /* ── 숫자 표기 ──────────────────────────────────── */
-  const SUFFIX = { man:'만원', mil:'백만원', won:'원' };
-
+  const SUFFIX={man:'만원',mil:'백만원',won:'원'};
+  /* DB에는 원 단위로 저장됩니다. 보기 좋게 나눠서 표시만 바꿉니다. */
   function fmtNum(v){
-    v = Number(v) || 0;
-    if (unit === 'man') return Math.round(v).toLocaleString('ko-KR');
-    if (unit === 'mil') return (v/100).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
-    return Math.round(v*10000).toLocaleString('ko-KR');
+    v=Number(v)||0;
+    if(unit==='man') return Math.round(v/10000).toLocaleString('ko-KR');
+    if(unit==='mil') return (v/1000000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+    return Math.round(v).toLocaleString('ko-KR');
   }
   const fmt = v => fmtNum(v) + SUFFIX[unit];
   const cnt = n => (Math.round(Number(n)||0)).toLocaleString('ko-KR');
   function fmtAxis(v){
     if (unit === 'won'){
-      const w = (Number(v)||0) * 10000;
+      const w = Number(v)||0;
       if (w >= 100000000) return (w/100000000).toFixed(1).replace(/\.0$/,'') + '억';
       return Math.round(w/10000).toLocaleString('ko-KR') + '만';
     }
@@ -795,7 +795,7 @@
     }catch(e){
       const n=document.getElementById('notice');
       n.className='notice on';
-      n.textContent='데이터를 불러오지 못해 예시 값을 보여주고 있습니다. ('+(e.message||e)+') — SQL을 다시 실행했는지, 읽기 권한(RLS)이 열려 있는지 확인해 주세요.';
+      n.textContent='데이터를 불러오지 못해 예시 값을 보여주고 있습니다. (예시 값은 실제 단위와 다를 수 있습니다.) ('+(e.message||e)+') — SQL을 다시 실행했는지, 읽기 권한(RLS)이 열려 있는지 확인해 주세요.';
       const mk=(y,m,r,t,d)=>({year:y,month:m,revenue:r,target:t,deals:d});
       DATA={
         monthly:[
