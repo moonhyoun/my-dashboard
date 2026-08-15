@@ -131,7 +131,7 @@
   <section class="grid2">
     <div class="panel">
       <h2>목표 달성률</h2>
-      <p class="hint">세로선이 100% 지점입니다.</p>
+      <p class="hint">세로선이 기준선입니다. 낮을수록 좋은 지표는 선을 넘지 않아야 합니다.</p>
       <div id="goals" class="loading">불러오는 중…</div>
     </div>
     <div class="panel">
@@ -347,12 +347,16 @@
       }
       const st = rate>=(+t.green) ? 'ok' : (rate>=(+t.yellow) ? 'warn' : 'bad');
       const stText = st==='ok'?'정상':(st==='warn'?'주의':'경고');
+      /* 낮을수록 좋은 지표는 달성률 대신 '기준의 N%'로 표시 — 195% 같은 오해를 막기 위함 */
+      const useRate = t.direction==='down' ? dv(v.actual, target)*100 : rate;
+      const label = !target ? '기준 없음'
+        : (t.direction==='down' ? '기준의 '+useRate.toFixed(0)+'%' : useRate.toFixed(0)+'%');
       html+='<a class="sig" href="'+a.href+'" style="--c:'+a.color+'">'
         +'<div class="band"></div><div class="in">'
         +'<div class="t">'+esc(t.area)+' · '+v.month+'월</div>'
         +'<div class="v">'+v.txt+'</div>'
         +'<div class="d">'+esc(v.sub)+'</div>'
-        +'<div class="st '+st+'"><i></i>'+stText+' '+(target?rate.toFixed(0)+'%':'기준 없음')+'</div>'
+        +'<div class="st '+st+'"><i></i>'+stText+' '+label+'</div>'
         +'</div></a>';
     });
     box.innerHTML=html || '<p class="loading">신호등 기준(exec_target)이 없습니다.</p>';
@@ -364,16 +368,21 @@
       if(!v) return;
       const target=(t.target!==null&&t.target!==undefined)?+t.target:(v.target||0);
       if(!target){ return; }
-      const rate = t.direction==='down' ? dv(target,v.actual)*100 : dv(v.actual,target)*100;
-      const shown=Math.min(150,rate);
+      const down = t.direction==='down';
+      const fill = down ? dv(v.actual,target)*100 : dv(v.actual,target)*100;   // 기준 대비 실제 위치
+      const shown = Math.min(150, fill);
+      const targetTxt = (t.metric==='revenue'||t.metric==='profit') ? fmtNum(target)
+        : (t.metric==='runway' ? target+'개월' : target+(t.metric==='new_customers'?'명':'%'));
+      const bigTxt = down ? pct(v.actual) : fill.toFixed(0)+'%';
+      const subTxt = down
+        ? ('기준 '+targetTxt+' 이하 유지 · 현재 기준의 '+fill.toFixed(0)+'%')
+        : ('목표 '+targetTxt);
       g+='<div class="goal" style="--c:'+a.color+'">'
-        +'<div class="top"><span class="nm">'+esc(t.area)+'</span>'
-        +'<span class="rt" style="color:'+a.color+'">'+rate.toFixed(0)+'%</span></div>'
+        +'<div class="top"><span class="nm">'+esc(t.area)+(down?' <span style="font-weight:500;color:#94A3B8;font-size:11.5px">낮을수록 좋음</span>':'')+'</span>'
+        +'<span class="rt" style="color:'+a.color+'">'+bigTxt+'</span></div>'
         +'<div class="lane"><i style="width:'+(shown/150*100)+'%"></i>'
         +'<span class="mark" style="left:'+(100/150*100)+'%"></span></div>'
-        +'<div class="sub">'+(t.direction==='down'?'낮을수록 좋음 · 기준 ':'목표 ')
-        +(t.metric==='revenue'||t.metric==='profit'?fmtNum(target):(t.metric==='runway'?target+'개월':target+(t.metric==='new_customers'?'명':'%')))
-        +'</div></div>';
+        +'<div class="sub">'+subTxt+'</div></div>';
     });
     document.getElementById('goals').className='';
     document.getElementById('goals').innerHTML=g||'<p class="loading">표시할 목표가 없습니다.</p>';
