@@ -494,25 +494,38 @@
         +'<div class="tr"><i style="width:'+((+d.amount||0)/mx*100)+'%"></i></div></li>';
     }).join('')+'</ol>';
 
-    /* 1위 쏠림과 상위 몇 곳 쏠림을 따로 봅니다.
-       한 곳이 크게 몰려 있는 경우와, 여러 곳에 고루 몰려 있는 경우는 위험의 성격이 다릅니다. */
+    /* 상위 몇 곳이 몇 %인지는 전체 거래처 수에 따라 뜻이 달라집니다.
+       9곳 중 5곳이 82%면 기대치(56%)를 웃돌지만, 6곳 중 5곳이 82%면 거의 균등합니다.
+       그래서 '고르게 나눴을 때 기대되는 비중'과 견줘서 판단합니다. */
+    const n=rows.length;
+    const even=k/n*100;
+    const ratio=even?share/even:1;
+    const evenFirst=100/n;                 // 한 곳당 고르게 나눈 비중
+
     let note;
-    if(first>=30){
+    if(first>=30 && first>=evenFirst*2){
       note='<div class="note alert">1위 <b>'+esc(rows[0].customer)+'</b> 한 곳이 <b>'+pct(first,0)
-        +'</b>를 차지합니다. 이 거래처가 흔들리면 회사가 함께 흔들립니다.</div>';
-    }else if(share>=70){
-      note='<div class="note alert">거래처가 '+rows.length+'곳인데 <b>상위 '+k+'곳이 '+pct(share,0)
-        +'</b>입니다. 소수에 몰려 있어 한 곳만 이탈해도 타격이 큽니다.</div>';
-    }else if(share>=50){
-      note='<div class="note">상위 '+k+'곳이 <b>'+pct(share,0)+'</b>입니다. 흔한 수준이지만 추이는 지켜보세요.</div>';
+        +'</b>를 차지합니다. 고르게 나눴을 때 '+pct(evenFirst,0)+'인 것에 견주면 크게 높습니다. '
+        +'이 거래처가 흔들리면 회사가 함께 흔들립니다.</div>';
+    }else if(n<=k+1){
+      note='<div class="note">거래처가 '+n+'곳뿐이라 쏠림을 판단하기 어렵습니다. '
+        +'상위 '+k+'곳이 '+pct(share,0)+'입니다.</div>';
+    }else if(ratio>=1.5){
+      note='<div class="note alert">거래처 '+n+'곳 중 <b>상위 '+k+'곳이 '+pct(share,0)+'</b>입니다. '
+        +'고르게 나눴을 때 '+pct(even,0)+'인 것에 견주면 소수에 몰려 있습니다.</div>';
+    }else if(ratio>=1.2){
+      note='<div class="note">상위 '+k+'곳이 <b>'+pct(share,0)+'</b>로, 고르게 나눴을 때 '
+        +pct(even,0)+'보다 높습니다. 추이를 지켜보세요.</div>';
     }else{
-      note='<div class="note">상위 '+k+'곳이 <b>'+pct(share,0)+'</b>로, 여러 거래처에 고르게 분산되어 있습니다.</div>';
+      note='<div class="note">상위 '+k+'곳이 <b>'+pct(share,0)+'</b>로, 고르게 나눴을 때 '
+        +pct(even,0)+' 수준입니다. 여러 거래처에 분산되어 있습니다.</div>';
     }
     box.innerHTML+=note;
 
     document.getElementById('conc-hint').innerHTML=
       y+'년 '+m+'월 미수금 기준 · 거래처 <b>'+rows.length+'곳</b>'
-      +' · 1위 <b>'+pct(first,0)+'</b> · 상위 '+k+'곳 <b>'+pct(share,0)+'</b>';
+      +' · 1위 <b>'+pct(first,0)+'</b> · 상위 '+k+'곳 <b>'+pct(share,0)+'</b>'
+      +' <span style="color:#94A3B8">(고르게 나누면 '+pct(k/rows.length*100,0)+')</span>';
   }
 
   /* ── 매출 구성 ── */
