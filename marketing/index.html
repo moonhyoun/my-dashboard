@@ -156,6 +156,7 @@
       <div class="bar-track"><div class="bar-fill" id="c-spend-bar"></div></div>
       <div class="rateline"><span class="rl">예산 소진율</span><span class="rv" id="c-spend-rate">–</span></div>
       <div id="c-spend-mom"></div>
+      <div class="foot" id="c-spend-yoy"></div>
     </div>
     <div class="card">
       <div class="label">통합 ROAS</div>
@@ -267,6 +268,15 @@
   const div=(a,b)=>b?a/b:0;
   const chip=(cls,txt)=>'<span class="chip '+cls+'">'+txt+'</span>';
 
+  function yoy(now, before, f, suffix, onDark){
+    if(before===null||before===undefined||!isFinite(before)||before===0) return '전년 동월 자료 없음';
+    const d=now-before, r=d/Math.abs(before)*100;
+    if(Math.abs(r)<0.05) return '전년 동월과 동일';
+    const color = onDark ? '#fff' : (d>0?'var(--pt)':'#94A3B8');
+    return '전년 대비 <span style="font-weight:700;color:'+color+'">'+(d>0?'▲':'▼')+' '
+         + f(Math.abs(d))+(suffix||'')+' ('+(d>0?'+':'−')+Math.abs(r).toFixed(1)+'%)</span>';
+  }
+
   /* 전월 대비 문장 (칩 아님, 보조 텍스트용) */
   function momText(now, before, f, suffix){
     if(before===null||before===undefined||!isFinite(before)||before===0) return '전월 —';
@@ -327,7 +337,7 @@
   }
 
   /* ── 카드 ───────────────────────────────────────── */
-  function drawCards(cur, prev, curAll, cfg){
+  function drawCards(cur, prev, curAll, cfg, py){
     const roas=div(cur.revenue,cur.spend)*100;
     const cac =div(cur.spend*10000,cur.conversions);
     const cpc =div(cur.spend*10000,cur.clicks);
@@ -342,6 +352,8 @@
     document.getElementById('c-spend-rate').textContent=pct(rate);
     document.getElementById('c-spend-mom').innerHTML=
       chip('flat', momText(cur.spend, prev?prev.spend:null, fmtNum, SUFFIX[unit]));
+    document.getElementById('c-spend-yoy').innerHTML=
+      yoy(cur.spend, py?py.spend:null, fmtNum, SUFFIX[unit], true);
 
     /* ROAS — 목표 대비를 칩으로, 손익분기는 아래 문장으로 */
     document.getElementById('c-roas').textContent=pct(roas,0);
@@ -353,7 +365,8 @@
     document.getElementById('c-roas-f').innerHTML=
       (cfg.targetRoas?('목표 '+cfg.targetRoas+'%<br>'):'')
       + (cfg.breakeven?('손익분기 '+Math.round(cfg.breakeven)+'%<br>'):'')
-      + momText(roas,pRoas,v=>v.toFixed(0),'%p');
+      + momText(roas,pRoas,v=>v.toFixed(0),'%p')
+      + '<br>' + yoy(roas, py?div(py.revenue,py.spend)*100:null, v=>v.toFixed(0), '%p');
 
     /* CAC — LTV 대비 배수를 칩으로 */
     document.getElementById('c-cac').textContent=cur.conversions?won(cac):'–';
@@ -376,7 +389,8 @@
     }else{ document.getElementById('c-conv-chip').innerHTML=''; }
     document.getElementById('c-conv-f').innerHTML=
       (cfg.targetConv?('목표 '+cnt(cfg.targetConv)+'건<br>'):'')
-      + 'CVR '+pct(cvr,2)+'<br>자연 유입 포함 '+cnt(curAll.conversions)+'건';
+      + 'CVR '+pct(cvr,2)+'<br>자연 유입 포함 '+cnt(curAll.conversions)+'건'
+      + '<br>' + yoy(cur.conversions, py?py.conversions:null, v=>Math.round(v).toLocaleString('ko-KR'), '건');
 
     const b=document.getElementById('c-spend-bar');
     b.style.width='0%';
@@ -641,10 +655,13 @@
 
     const timePct=drawPace(cur,budget);
 
+    const pyMonths=byMonth(DATA.channel.filter(d=>+d.year===year-1 && isPaid(d)));
+    const py=pyMonths.find(d=>d.month===curMonth)||null;
+
     drawCards(cur, prev, curAll, {
       budget:budget, targetRoas:targetRoas, targetConv:targetConv,
       breakeven:breakeven, ltv:ltv, progress:timePct
-    });
+    }, py);
     drawChannels(chYear.filter(d=>+d.month===curMonth), chYear, curMonth, breakeven);
     combo('chart-mix', monthsPaid, curMonth,
       [{value:targetRoas,label:'목표',color:'#94A3B8'},{value:breakeven,label:'손익분기',color:'#B45309',dash:'2 3'}]);
