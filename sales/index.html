@@ -564,12 +564,12 @@
     const lastAmt=+lastRow.won_amount||+lastRow.amount||0;
     const total=first?(last/first*100).toFixed(1):'0.0';
     const totalAmt=firstAmt?(lastAmt/firstAmt*100).toFixed(1):'0.0';
-    const unit=last?lastAmt/last:0;
+    const unitPrice=last?lastAmt/last:0;   /* 화면 단위 설정값(unit)과 이름이 겹치지 않게 함 */
 
     h+='<div class="ffoot"><span class="lb">최종 전환율 · '+esc(rows[0].stage)+' → '+esc(lastRow.stage)+' (건수)</span>'
      + '<span class="vl">'+total+'%</span></div>';
     h+='<div class="ffoot2"><span>금액 기준 전환율 <b>'+totalAmt+'%</b></span>'
-     + '<span>계약 단가 <b>'+fmt(unit)+'</b></span></div>';
+     + '<span>계약 단가 <b>'+fmt(unitPrice)+'</b></span></div>';
     box.innerHTML=h;
     document.getElementById('funnel-hint').innerHTML=
       year+'년 '+selM+'월 유입 기준 · 건수 아래 숫자는 각 단계에 걸린 <b>예상 계약금액 ('+SUFFIX[unit]+')</b>입니다.';
