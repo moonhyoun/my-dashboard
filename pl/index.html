@@ -155,6 +155,7 @@
       <div class="bar-track"><div class="bar-fill" id="c-op-bar"></div></div>
       <div class="rateline"><span class="rl">목표 대비</span><span class="rv" id="c-op-rate">–</span></div>
       <div id="c-op-chip"></div>
+      <div class="foot" id="c-op-yoy"></div>
     </div>
     <div class="card">
       <div class="label">영업이익률</div>
@@ -256,6 +257,15 @@
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const dv=(a,b)=>b?a/b:0;
   const chip=(cls,txt)=>'<span class="chip '+cls+'">'+txt+'</span>';
+  function yoy(now, before, f, suffix, onDark){
+    if(before===null||before===undefined||!isFinite(before)||before===0) return '전년 동월 자료 없음';
+    const d=now-before, r=d/Math.abs(before)*100;
+    if(Math.abs(r)<0.05) return '전년 동월과 동일';
+    const color = onDark ? '#fff' : (d>0?'var(--pt-deep)':'#94A3B8');
+    return '전년 대비 <span style="font-weight:700;color:'+color+'">'+(d>0?'▲':'▼')+' '
+         + f(Math.abs(d))+(suffix||'')+' ('+(d>0?'+':'−')+Math.abs(r).toFixed(1)+'%)</span>';
+  }
+
   function momText(now,before,f,suffix){
     if(before===null||before===undefined||!isFinite(before)) return '전월 —';
     const d=now-before;
@@ -266,8 +276,8 @@
   /* ── 데이터 ─────────────────────────────────────── */
   async function load(){
     const [m,c,g]=await Promise.all([
-      db.from('pl_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
-      db.from('pl_cost').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
+      db.from('pl_monthly_v').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
+      db.from('pl_cost_v').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('pl_margin').select('*').order('year',{ascending:true}).order('month',{ascending:true})
     ]);
     if(m.error||c.error||g.error) throw (m.error||c.error||g.error);
@@ -325,7 +335,7 @@
   }
 
   /* ── 카드 ───────────────────────────────────────── */
-  function drawCards(c,p){
+  function drawCards(c,p,py){
     const int0=v=>Math.round(v).toLocaleString('ko-KR');
     document.getElementById('card-profit').className='card hero'+(c.profit<0?' loss':'');
     document.getElementById('c-op-l').textContent=c.month+'월 영업이익';
@@ -334,6 +344,8 @@
     document.getElementById('c-op-rate').textContent=c.targetProfit?pct(opRate):'목표 없음';
     document.getElementById('c-op-chip').innerHTML=
       chip('flat',momText(c.profit,p?p.profit:null,fmtNum,SUFFIX[unit]));
+    document.getElementById('c-op-yoy').innerHTML=
+      yoy(c.profit, py?py.profit:null, fmtNum, SUFFIX[unit], true);
     const b=document.getElementById('c-op-bar');
     b.style.width='0%';
     requestAnimationFrame(()=>{ b.style.width=Math.max(0,Math.min(100,opRate))+'%'; });
@@ -347,7 +359,8 @@
     document.getElementById('c-margin-f').innerHTML=
       (c.targetMargin?('목표 '+c.targetMargin+'%<br>'):'')
       +'공헌이익률 '+pct(c.cmRate)+'<br>'
-      +momText(c.margin,p?p.margin:null,v=>v.toFixed(1),'%p');
+      +momText(c.margin,p?p.margin:null,v=>v.toFixed(1),'%p')
+      +'<br>'+yoy(c.margin, py?py.margin:null, v=>v.toFixed(1), '%p');
 
     document.getElementById('c-bep').textContent=pct(c.bepRate);
     document.getElementById('c-bep-chip').innerHTML=
@@ -361,7 +374,8 @@
     document.getElementById('c-cost-chip').innerHTML=
       chip('flat',momText(c.total,p?p.total:null,fmtNum,SUFFIX[unit]));
     document.getElementById('c-cost-f').innerHTML=
-      '고정 '+fmtNum(c.fixed)+' · 변동 '+fmtNum(c.variable)+'<br>매출 대비 '+pct(dv(c.total,c.revenue)*100);
+      '고정 '+fmtNum(c.fixed)+' · 변동 '+fmtNum(c.variable)+'<br>매출 대비 '+pct(dv(c.total,c.revenue)*100)
+      +'<br>'+yoy(c.total, py?py.total:null, fmtNum, SUFFIX[unit]);
   }
 
   /* ── 폭포 그래프 ────────────────────────────────── */
@@ -634,7 +648,9 @@
     if(i<0) i=all.length-1;
     const c=all[i];
     const p=i>0?all[i-1]:null;
-    drawCards(c,p);
+    const pyRow=DATA.monthly.find(d=>+d.year===year-1 && +d.month===c.month);
+    const py=pyRow?calc(pyRow):null;
+    drawCards(c,p,py);
     drawTrend(all,c.month);
     drawWaterfall(c);
     drawGauge(c);
@@ -664,7 +680,7 @@
   (async function(){
     try{
       DATA=await load();
-      if(!DATA.monthly.length) throw new Error('pl_monthly 테이블이 비어 있습니다.');
+      if(!DATA.monthly.length) throw new Error('pl_monthly_v 뷰가 비어 있습니다.');
     }catch(e){
       const n=document.getElementById('notice');
       n.className='notice on';
