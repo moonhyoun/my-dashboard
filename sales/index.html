@@ -149,6 +149,11 @@
   .printbtn{font:inherit;font-size:12px;font-weight:600;color:var(--gray);background:#fff;
     border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
   .printbtn:hover{color:var(--pt,var(--blue));border-color:var(--line)}
+  .note{margin-top:12px;border:1px solid #BFD3F7;background:#F0F5FF;
+    border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.6}
+  .note b{color:#1D4ED8}
+  .note.alert{border-color:#F2C4BE;background:#FCEEEC}
+  .note.alert b{color:#C0392B}
   .loading{color:var(--gray);font-size:13px;padding:20px 0}
 
   @media (max-width:900px){ .grid2{grid-template-columns:1fr} }
@@ -586,6 +591,20 @@
     const box=document.getElementById('chart-funnel');
     box.className='';
     if(!rows.length){ box.innerHTML='<p class="loading">데이터가 없습니다.</p>'; return; }
+
+    /* 단계가 하나뿐이면 전환율이 100%로 나와 오해를 부릅니다.
+       마케팅 전환만 있고 영업 파이프라인이 아직 안 들어온 달이 여기 해당합니다. */
+    if(rows.length < 2){
+      const only=rows[0];
+      box.innerHTML='<div class="note alert" style="margin-top:0">'
+        +'<b>'+esc(only.stage)+' 단계만 들어와 있습니다.</b> ('+cnt(only.count)+'건 · '+fmt(only.amount)+')<br>'
+        +'견적·협상·계약 단계가 없어 전환율을 계산할 수 없습니다. '
+        +'sales_pipeline 에 '+year+'년 '+selM+'월 자료를 넣어 주세요.</div>';
+      document.getElementById('src-block').innerHTML='';
+      document.getElementById('funnel-hint').textContent=
+        year+'년 '+selM+'월 · 영업 단계 자료가 아직 들어오지 않았습니다.';
+      return;
+    }
 
     const first=+rows[0].count||1;
     const firstAmt=+rows[0].amount||0;
