@@ -21,6 +21,13 @@
   h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
 
   .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  .controls.months{margin-bottom:18px}
+    .drop{font:inherit;font-size:13px;font-weight:600;color:var(--ink);background-color:#fff;
+    border:1px solid var(--line);border-radius:10px;padding:8px 30px 8px 12px;cursor:pointer;
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 10px center;background-size:10px}
+  .drop:focus-visible{outline:2px solid var(--pt);outline-offset:-2px}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .seg button{font:inherit;font-size:13px;font-weight:600;color:var(--gray);
     background:#fff;border:0;padding:8px 14px;cursor:pointer;border-left:1px solid var(--line)}
@@ -128,13 +135,15 @@
 
   <div class="controls">
     <span class="seg-label">연도</span>
-    <div class="seg" id="seg-year"></div>
+    <select class="drop" id="sel-year" aria-label="연도 선택"></select>
     <span class="seg-label" style="margin-left:8px">단위</span>
-    <div class="seg" id="seg-unit">
-      <button data-u="man" aria-pressed="true">만원</button>
-      <button data-u="mil" aria-pressed="false">백만원</button>
-      <button data-u="won" aria-pressed="false">원</button>
-    </div>
+    <select class="drop" id="sel-unit" aria-label="금액 단위 선택">
+      <option value="man" selected>만원</option>
+      <option value="mil">백만원</option>
+      <option value="won">원</option>
+    </select>
+    <span class="seg-label" style="margin-left:8px">월</span>
+    <select class="drop" id="sel-month" aria-label="월 선택"></select>
   </div>
 
   <div class="notice" id="notice"></div>
@@ -166,6 +175,19 @@
       <div class="foot" id="c-cost-f">–</div>
     </div>
   </section>
+
+  <div class="panel">
+    <h2>월별 영업이익 추이</h2>
+    <p class="hint" id="trend-hint">막대는 영업이익, 선은 영업이익률입니다.</p>
+    <div id="trend" class="loading">불러오는 중…</div>
+    <div class="legend">
+      <span><i style="background:var(--pt)"></i>선택한 달</span>
+      <span><i style="background:var(--pt-mid)"></i>다른 달</span>
+      <span><i style="background:var(--neg)"></i>적자</span>
+      <span><i style="background:#0F172A;height:2px;border-radius:0"></i>영업이익률</span>
+      <span><i style="background:#94A3B8;height:2px;border-radius:0"></i>목표 영업이익률</span>
+    </div>
+  </div>
 
   <section class="grid2">
     <div class="panel">
@@ -212,7 +234,7 @@
     auth:{ persistSession:false, autoRefreshToken:false }
   });
 
-  let DATA=null, year=null, unit='man';
+  let DATA=null, year=null, month=null, unit='man';
 
   const SUFFIX={man:'만원',mil:'백만원',won:'원'};
   function fmtNum(v){
@@ -263,8 +285,18 @@
     const years=[...set].filter(Boolean).sort((a,b)=>b-a);
     const ty=new Date().getFullYear();
     year=years.includes(ty)?ty:(years[0]??ty);
-    document.getElementById('seg-year').innerHTML=
-      years.map(y=>'<button data-y="'+y+'" aria-pressed="'+(y===year)+'">'+y+'년</button>').join('');
+    const sy=document.getElementById('sel-year');
+    sy.innerHTML=years.map(y=>'<option value="'+y+'"'+(y===year?' selected':'')+'>'+y+'년</option>').join('');
+    sy.value=String(year);
+  }
+
+  function refreshMonths(){
+    const ms=DATA.monthly.filter(d=>+d.year===year).map(d=>+d.month).sort((a,b)=>a-b);
+    const box=document.getElementById('sel-month');
+    if(!ms.length){ box.innerHTML=''; month=null; return; }
+    if(ms.indexOf(month)<0) month=ms[ms.length-1];
+    box.innerHTML=ms.map(m=>'<option value="'+m+'"'+(m===month?' selected':'')+'>'+m+'월</option>').join('');
+    box.value=String(month);
   }
 
   /* 한 달치 손익 계산 */
@@ -513,19 +545,94 @@
       + (hasRev?'':' 영업 대시보드의 품목명과 이름이 같아야 금액이 표시됩니다.');
   }
 
+  /* ── 월별 영업이익 추이 ─────────────────────────── */
+  function drawTrend(list, curMonth){
+    const box=document.getElementById('trend');
+    box.className='';
+    if(!list.length){ box.textContent='데이터가 없습니다.'; return; }
+
+    const cw=box.clientWidth||900;
+    const narrow=cw<520;
+    const W=narrow?400:900, H=narrow?250:300;
+    const PL=narrow?4:56, PR=narrow?4:16, PT=narrow?34:44, PB=narrow?26:40;
+    const iw=W-PL-PR, ih=H-PT-PB;
+
+    const profits=list.map(d=>d.profit);
+    const hi=Math.max.apply(null,profits.concat([1]))*1.3;
+    const lo=Math.min(0,Math.min.apply(null,profits))*1.35;
+    const ys=v=>PT+ih-((v-lo)/((hi-lo)||1))*ih;
+
+    const tm=list[list.length-1].targetMargin||0;
+    const margins=list.map(d=>d.margin);
+    const mHi=Math.max.apply(null,margins.concat([tm,1]))*1.45;
+    const mLo=Math.min(0,Math.min.apply(null,margins))*1.3;
+    const yr=v=>PT+ih-((v-mLo)/((mHi-mLo)||1))*ih;
+
+    const slot=iw/list.length, bw=Math.min(narrow?24:44,slot*0.5);
+    let s='';
+    s+='<text x="'+(narrow?2:4)+'" y="'+(narrow?12:16)+'" font-size="'+(narrow?8:11)+'" fill="#94A3B8">영업이익 단위: '+SUFFIX[unit]+'</text>';
+
+    if(!narrow){
+      for(let i=0;i<=4;i++){
+        const v=lo+(hi-lo)/4*i, yy=ys(v);
+        s+='<line x1="'+PL+'" y1="'+yy+'" x2="'+(PL+iw)+'" y2="'+yy+'" stroke="#EDF0F5"/>';
+        s+='<text x="'+(PL-8)+'" y="'+(yy+4)+'" text-anchor="end" font-size="10.5" fill="#94A3B8">'+fmtAxis(v)+'</text>';
+      }
+    }
+    const zero=ys(0);
+    s+='<line x1="'+PL+'" y1="'+zero+'" x2="'+(PL+iw)+'" y2="'+zero+'" stroke="#CBD5E1"/>';
+
+    if(tm>0){
+      const ty=yr(tm);
+      s+='<line x1="'+PL+'" y1="'+ty+'" x2="'+(PL+iw)+'" y2="'+ty+'" stroke="#94A3B8" stroke-width="1.3" stroke-dasharray="5 4"/>';
+      if(!narrow) s+='<text x="'+(PL+iw)+'" y="'+(ty-5)+'" text-anchor="end" font-size="9.5" font-weight="700" fill="#94A3B8">목표 '+tm+'%</text>';
+    }
+
+    list.forEach(function(d,i){
+      const cx=PL+slot*i+slot/2;
+      const top=ys(Math.max(0,d.profit)), bot=ys(Math.min(0,d.profit));
+      const h=Math.max(1,bot-top);
+      const sel=d.month===curMonth;
+      const fill = d.profit<0 ? 'var(--neg)' : (sel?'var(--pt)':'var(--pt-mid)');
+      s+='<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+h+'" rx="'+(narrow?2:4)+'" fill="'+fill+'"/>';
+      s+='<text x="'+cx+'" y="'+(top-(narrow?4:7))+'" text-anchor="middle" font-size="'+(narrow?8:10.5)+'" font-weight="700" fill="'+(d.profit<0?'#C0392B':(sel?'#8A4F07':'#0F172A'))+'">'+fmtNum(d.profit)+'</text>';
+      s+='<text x="'+cx+'" y="'+(H-(narrow?9:12))+'" text-anchor="middle" font-size="'+(narrow?8.5:10.5)+'" font-weight="'+(sel?700:500)+'" fill="'+(sel?'#0F172A':'#94A3B8')+'">'+d.month+(narrow?'':'월')+'</text>';
+    });
+
+    const pts=list.map(function(d,i){ return (PL+slot*i+slot/2)+','+yr(d.margin); }).join(' ');
+    s+='<polyline points="'+pts+'" fill="none" stroke="#0F172A" stroke-width="'+(narrow?1.4:1.8)+'" stroke-linejoin="round"/>';
+    list.forEach(function(d,i){
+      const cx=PL+slot*i+slot/2, cy=yr(d.margin);
+      s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(narrow?2:3)+'" fill="#fff" stroke="#0F172A" stroke-width="'+(narrow?1.2:1.6)+'"/>';
+      if(!narrow) s+='<text x="'+cx+'" y="'+(cy-9)+'" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0F172A">'+d.margin.toFixed(1)+'%</text>';
+    });
+
+    box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="월별 영업이익 추이">'+s+'</svg>';
+
+    const sum=list.reduce(function(a,d){ a.rev+=d.revenue; a.p+=d.profit; return a; },{rev:0,p:0});
+    document.getElementById('trend-hint').innerHTML=
+      year+'년 '+list[0].month+'~'+list[list.length-1].month+'월 누적 · 매출 <b>'+fmt(sum.rev)
+      +'</b> · 영업이익 <b style="color:'+(sum.p<0?'var(--neg)':'var(--pt-deep)')+'">'+fmt(sum.p)
+      +'</b> (' + pct(dv(sum.p,sum.rev)*100) + ')';
+  }
+
   /* ── 전체 그리기 ────────────────────────────────── */
   function render(){
     if(!DATA) return;
     const ms=DATA.monthly.filter(d=>+d.year===year).sort((a,b)=>a.month-b.month);
     if(!ms.length){
-      ['waterfall','gauge','cost-table','prod-list'].forEach(id=>{
+      ['trend','waterfall','gauge','cost-table','prod-list'].forEach(id=>{
         const e=document.getElementById(id); e.className=''; e.innerHTML='<p class="loading">데이터가 없습니다.</p>';
       });
       syncButtons(); return;
     }
-    const c=calc(ms[ms.length-1]);
-    const p=ms.length>1?calc(ms[ms.length-2]):null;
+    const all=ms.map(calc);
+    let i=all.findIndex(d=>d.month===month);
+    if(i<0) i=all.length-1;
+    const c=all[i];
+    const p=i>0?all[i-1]:null;
     drawCards(c,p);
+    drawTrend(all,c.month);
     drawWaterfall(c);
     drawGauge(c);
     drawCosts(c);
@@ -533,15 +640,20 @@
     syncButtons();
   }
   function syncButtons(){
-    document.querySelectorAll('#seg-year button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.y===year));
-    document.querySelectorAll('#seg-unit button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.u===unit));
+    const sy2=document.getElementById('sel-year'); if(sy2&&year) sy2.value=String(year);
+    const su=document.getElementById('sel-unit'); if(su) su.value=unit;
+    const sm=document.getElementById('sel-month');
+    if(sm && month!==null) sm.value=String(month);
   }
 
-  document.getElementById('seg-year').addEventListener('click',function(e){
-    const b=e.target.closest('button'); if(!b) return; year=+b.dataset.y; render();
+  document.getElementById('sel-year').addEventListener('change', function(e){
+    year=+e.target.value; month=null; refreshMonths(); render();
   });
-  document.getElementById('seg-unit').addEventListener('click',function(e){
-    const b=e.target.closest('button'); if(!b) return; unit=b.dataset.u; render();
+  document.getElementById('sel-month').addEventListener('change',function(e){
+    month=+e.target.value; render();
+  });
+  document.getElementById('sel-unit').addEventListener('change', function(e){
+    unit=e.target.value; render();
   });
   let rt; window.addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(render,200); });
 
@@ -576,6 +688,7 @@
       };
     }
     buildYears();
+    refreshMonths();
     render();
   })();
 </script>
