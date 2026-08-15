@@ -88,6 +88,7 @@
   .rank-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
   .rank-bar .hint{margin:0}
   .panel .hint{font-size:12px;color:var(--gray);margin-top:4px;margin-bottom:14px}
+  .panel .hint b{color:var(--ink);font-weight:700}
   svg{display:block;width:100%;height:auto}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .grid2 .panel{margin-bottom:14px}
@@ -118,6 +119,20 @@
     font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ffoot2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
     margin-top:10px;font-size:12px;color:var(--gray)}
+  .srcwrap{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+  .srcwrap h3{font-size:13px;font-weight:700;margin-bottom:3px}
+  .srcwrap .sh{font-size:12px;color:var(--gray);margin-bottom:12px}
+  .srcwrap .sh b{color:var(--ink);font-weight:700}
+  .srctable{width:100%;border-collapse:collapse;font-size:12.5px}
+  .srctable th,.srctable td{padding:8px 6px;text-align:right;border-bottom:1px solid #F1F4F9;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .srctable th{font-size:11px;color:var(--gray);font-weight:600;border-bottom:1px solid var(--line)}
+  .srctable th:first-child,.srctable td:first-child{text-align:left}
+  .srctable tfoot td{font-weight:800;border-top:1px solid var(--line);border-bottom:0;background:#FAFAFC}
+  .srcbar{display:inline-block;width:44px;height:6px;border-radius:99px;background:#F1F4F9;
+    overflow:hidden;margin-right:7px;vertical-align:1px}
+  .srcbar i{display:block;height:100%;background:var(--blue);border-radius:99px}
+  .best{color:var(--blue);font-weight:800}
   .ffoot2 b{color:var(--ink);font-weight:700}
   .conc{display:flex;align-items:center;gap:8px;margin:-6px 0 14px;font-size:11.5px;color:var(--gray)}
   .conc .tr{flex:0 0 70px;height:6px;border-radius:99px;background:#F1F4F9;overflow:hidden}
@@ -255,6 +270,7 @@
     <h2>영업 단계</h2>
     <p class="hint" id="funnel-hint">단계 사이 숫자는 다음 단계로 넘어간 비율</p>
     <div id="chart-funnel" class="loading">불러오는 중…</div>
+    <div id="src-block"></div>
   </div>
 </div>
 
@@ -305,7 +321,7 @@
   async function load(){
     const [m,p,r] = await Promise.all([
       db.from('sales_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
-      db.from('sales_pipeline').select('*').order('year',{ascending:true}).order('sort_order',{ascending:true}),
+      db.from('sales_pipeline_v').select('*').order('year',{ascending:true}).order('sort_order',{ascending:true}),
       db.from('sales_rank').select('*').order('amount',{ascending:false})
     ]);
     const err = m.error || p.error || r.error;
@@ -477,6 +493,48 @@
   }
 
   /* ── 영업 단계 (가로형) ─────────────────────────── */
+  /* 유입 경로별 성과 */
+  function drawSources(rows, selM){
+    const box=document.getElementById('src-block');
+    const srcs=[...new Set(rows.map(d=>d.source).filter(Boolean))];
+    if(srcs.length<2){ box.innerHTML=''; return; }
+
+    const firstOrd=Math.min.apply(null,rows.map(d=>+d.sort_order));
+    const lastOrd =Math.max.apply(null,rows.map(d=>+d.sort_order));
+    const data=srcs.map(function(sc){
+      const inq=rows.filter(d=>d.source===sc && +d.sort_order===firstOrd)
+                    .reduce((a,d)=>a+(+d.count||0),0);
+      const wonRows=rows.filter(d=>d.source===sc && +d.sort_order===lastOrd);
+      const won=wonRows.reduce((a,d)=>a+(+d.count||0),0);
+      const amt=wonRows.reduce((a,d)=>a+(+d.won_amount||+d.amount||0),0);
+      return { source:sc, inq, won, amt, rate:inq?won/inq*100:0 };
+    }).sort((a,b)=>b.inq-a.inq);
+
+    const t=data.reduce(function(a,d){ a.inq+=d.inq; a.won+=d.won; a.amt+=d.amt; return a; },{inq:0,won:0,amt:0});
+    const bestRate=Math.max.apply(null,data.map(d=>d.rate));
+    const topInq=Math.max.apply(null,data.map(d=>d.inq).concat([1]));
+    const ad=data.find(d=>d.source==='광고');
+    const adShare=ad?ad.inq/(t.inq||1)*100:0;
+
+    const body=data.map(function(d){
+      const best=d.rate>=bestRate-0.001;
+      return '<tr><td>'+esc(d.source)+'</td>'
+        +'<td><span class="srcbar"><i style="width:'+(d.inq/topInq*100)+'%"></i></span>'+cnt(d.inq)+'</td>'
+        +'<td>'+cnt(d.won)+'</td>'
+        +'<td'+(best?' class="best"':'')+'>'+d.rate.toFixed(1)+'%</td>'
+        +'<td>'+fmtNum(d.amt)+'</td></tr>';
+    }).join('');
+
+    box.innerHTML='<div class="srcwrap"><h3>유입 경로별 성과</h3>'
+      +'<p class="sh">광고 의존도 <b>'+adShare.toFixed(0)+'%</b>'
+      +(adShare>=60?' · 광고를 멈추면 문의가 크게 줄어듭니다.':' · 광고 외 경로가 절반 이상을 만들고 있습니다.')+'</p>'
+      +'<table class="srctable"><thead><tr><th>경로</th><th>문의 (건)</th><th>계약 (건)</th>'
+      +'<th>계약률</th><th>계약금액 ('+SUFFIX[unit]+')</th></tr></thead>'
+      +'<tbody>'+body+'</tbody>'
+      +'<tfoot><tr><td>합계</td><td>'+cnt(t.inq)+'</td><td>'+cnt(t.won)+'</td>'
+      +'<td>'+(t.inq?(t.won/t.inq*100).toFixed(1):'0.0')+'%</td><td>'+fmtNum(t.amt)+'</td></tr></tfoot></table></div>';
+  }
+
   function drawFunnel(rows, selM){
     const box=document.getElementById('chart-funnel');
     box.className='';
@@ -513,8 +571,8 @@
     h+='<div class="ffoot2"><span>금액 기준 전환율 <b>'+totalAmt+'%</b></span>'
      + '<span>계약 단가 <b>'+fmt(unit)+'</b></span></div>';
     box.innerHTML=h;
-    document.getElementById('funnel-hint').textContent=
-      year+'년 '+selM+'월 유입 기준 · 아래 금액은 각 단계에 걸린 예상 계약금액입니다.';
+    document.getElementById('funnel-hint').innerHTML=
+      year+'년 '+selM+'월 유입 기준 · 건수 아래 숫자는 각 단계에 걸린 <b>예상 계약금액 ('+SUFFIX[unit]+')</b>입니다.';
   }
 
   /* ── 순위 ───────────────────────────────────────── */
@@ -577,13 +635,22 @@
     const curMonth = (month && done.some(d=>+d.month===month))
       ? month : (done.length ? +done[done.length-1].month : null);
 
-    const pipeline = DATA.pipeline
-      .filter(d=>+d.year===year && (d.month===undefined || +d.month===curMonth))
-      .sort((a,b)=>a.sort_order-b.sort_order);
+    const pipeRaw = DATA.pipeline
+      .filter(d=>+d.year===year && (d.month===undefined || +d.month===curMonth));
+    /* 깔때기는 경로를 합쳐서, 아래 표는 경로별로 보여줍니다 */
+    const byStage=new Map();
+    pipeRaw.forEach(function(d){
+      const k=+d.sort_order;
+      if(!byStage.has(k)) byStage.set(k,{sort_order:k, stage:d.stage, count:0, amount:0, won_amount:0});
+      const t=byStage.get(k);
+      t.count+=+d.count||0; t.amount+=+d.amount||0; t.won_amount+=+d.won_amount||0;
+    });
+    const pipeline=[...byStage.values()].sort((a,b)=>a.sort_order-b.sort_order);
 
     drawCards(monthly, pipeline, curMonth, prevYear);
     drawBars(monthly, curMonth);
     drawFunnel(pipeline, curMonth);
+    drawSources(pipeRaw, curMonth);
 
     const rsP = rankRows(rank,'person',  perPerson,  curMonth);
     const rsQ = rankRows(rank,'product', perProduct, curMonth);
