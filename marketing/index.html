@@ -287,12 +287,13 @@
 
   /* ── 데이터 ─────────────────────────────────────── */
   async function load(){
-    const [c,b]=await Promise.all([
+    const [c,b,l]=await Promise.all([
       db.from('marketing_channel').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
-      db.from('marketing_budget').select('*').order('year',{ascending:true}).order('month',{ascending:true})
+      db.from('marketing_budget').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
+      db.from('customer_ltv_v').select('*').order('year',{ascending:true}).order('month',{ascending:true})
     ]);
     if(c.error||b.error) throw (c.error||b.error);
-    return { channel:c.data||[], budget:b.data||[] };
+    return { channel:c.data||[], budget:b.data||[], ltv:(l&&!l.error)?(l.data||[]):[] };
   }
 
   function buildYears(){
@@ -314,6 +315,14 @@
     if(ms.indexOf(month)<0) month=ms[ms.length-1];
     box.innerHTML=ms.map(m=>'<option value="'+m+'"'+(m===month?' selected':'')+'>'+m+'월</option>').join('');
     box.value=String(month);
+  }
+
+  /* 선택한 달의 LTV. 그 달 고객 자료가 아직 없으면 가장 최근 값을 씁니다. */
+  function pickLtv(y,m){
+    const rows=(DATA.ltv||[]).filter(d=>d.ltv!==null && d.ltv!==undefined
+      && (+d.year<y || (+d.year===y && +d.month<=m)))
+      .sort((a,b)=>(a.year-b.year)||(a.month-b.month));
+    return rows.length?rows[rows.length-1]:null;
   }
 
   const isPaid=d=>d.paid!==false;
@@ -376,7 +385,7 @@
         chip(x>=3?'good':'bad','LTV 대비 '+x.toFixed(1)+'배');
     }else{ document.getElementById('c-cac-chip').innerHTML=''; }
     document.getElementById('c-cac-f').innerHTML=
-      (cfg.ltv?('LTV '+fmt(cfg.ltv)+' · 권장 3배<br>'):'')
+      (cfg.ltv?('LTV '+fmt(cfg.ltv)+' · 권장 3배<br><span style="color:#94A3B8">고객 대시보드 '+(cfg.ltvBasis||'')+'</span><br>'):'')
       + 'CPC '+won(cpc)+'<br>'+momText(cac,pCac,int0,'원');
 
     /* 전환 — 목표 대비 달성률을 칩으로 */
@@ -650,7 +659,8 @@
     const targetRoas=+b.target_roas||0;
     const targetConv=+b.target_conversions||0;
     const margin=+b.margin_rate||0;
-    const ltv=+b.ltv||0;
+    const ltvRow=pickLtv(year,curMonth);
+    const ltv=ltvRow?+ltvRow.ltv||0:0;
     const breakeven=margin>0?10000/margin:0;   // 100/마진율 × 100
 
     const timePct=drawPace(cur,budget);
@@ -660,7 +670,8 @@
 
     drawCards(cur, prev, curAll, {
       budget:budget, targetRoas:targetRoas, targetConv:targetConv,
-      breakeven:breakeven, ltv:ltv, progress:timePct
+      breakeven:breakeven, ltv:ltv, progress:timePct,
+      ltvBasis: ltvRow ? ((+ltvRow.year===year?'':ltvRow.year+'년 ')+ltvRow.month+'월 기준') : null
     }, py);
     drawChannels(chYear.filter(d=>+d.month===curMonth), chYear, curMonth, breakeven);
     combo('chart-mix', monthsPaid, curMonth,
