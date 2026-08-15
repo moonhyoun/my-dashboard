@@ -94,6 +94,11 @@
   .otlegend{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:11.5px;color:var(--gray)}
   .otlegend i{display:inline-block;width:22px;height:10px;border-radius:3px}
 
+  .bez{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
+  .bez div{border:1px solid var(--line);border-radius:11px;padding:13px}
+  .bez .k{font-size:11.5px;color:var(--gray);font-weight:600}
+  .bez .v{font-size:18px;font-weight:800;margin-top:4px;letter-spacing:-.02em}
+  .bez .s{font-size:11.5px;color:var(--gray);margin-top:3px}
   .loading{color:var(--gray);font-size:13px;padding:20px 0}
   @media (max-width:900px){ .grid2{grid-template-columns:1fr} }
   @media (max-width:520px){ body{padding:20px 12px 48px} .panel{padding:14px} }
@@ -172,6 +177,11 @@
       <h2>부서별 인원과 인건비</h2>
       <p class="hint" id="team-hint">인건비는 손익의 인건비 총액을 부서 비중으로 나눈 값입니다.</p>
       <div class="tablewrap" id="team-table"></div>
+    </div>
+    <div class="panel">
+      <h2>한 명 더 뽑으면</h2>
+      <p class="hint" id="be-hint">채용이 손익에 어떤 영향을 주는지 봅니다.</p>
+      <div id="breakeven"></div>
     </div>
     <div class="panel">
       <h2>부서별 초과근무</h2>
@@ -429,6 +439,41 @@
       : '인건비는 손익의 인건비 총액 '+fmt(c.payroll)+'을 부서 비중으로 나눈 값입니다.';
   }
 
+  /* ── 한 명 더 뽑으면 (손익분기 인원) ── */
+  function drawBreakeven(c){
+    const box=document.getElementById('breakeven');
+    const rows=DATA.cost.filter(d=>+d.year===c.year && +d.month===c.month);
+    if(!rows.length || !c.revenue){ box.innerHTML='<p class="loading">손익 자료가 없습니다.</p>'; return; }
+    const variable=rows.filter(d=>d.cost_type==='변동').reduce((a,d)=>a+(+d.amount||0),0);
+    const fixed   =rows.filter(d=>d.cost_type==='고정').reduce((a,d)=>a+(+d.amount||0),0);
+    const cmRate  =dv(c.revenue-variable, c.revenue);
+    if(cmRate<=0){ box.innerHTML='<p class="loading">공헌이익률을 계산할 수 없습니다.</p>'; return; }
+
+    const perHead = c.head ? c.payroll/c.head : 0;
+    const bepNow  = fixed/cmRate;
+    const bepNext = (fixed+perHead)/cmRate;
+    const extra   = bepNext-bepNow;
+    const perRev  = c.head ? c.revenue/c.head : 0;
+    const safety  = dv(c.revenue-bepNow, c.revenue)*100;
+    const safety2 = dv(c.revenue-bepNext, c.revenue)*100;
+
+    box.innerHTML=
+      '<div class="bez">'
+      +'<div><div class="k">지금 손익분기 매출</div><div class="v">'+fmt(bepNow)+'</div>'
+      +'<div class="s">안전마진 '+safety.toFixed(1)+'%</div></div>'
+      +'<div><div class="k">한 명 늘렸을 때</div><div class="v" style="color:var(--pt)">'+fmt(bepNext)+'</div>'
+      +'<div class="s">안전마진 '+safety2.toFixed(1)+'%</div></div>'
+      +'</div>'
+      + (extra>perRev
+        ? '<div class="note alert">한 명을 더 뽑으면 매출이 <b>'+fmt(extra)+'</b> 더 나와야 본전입니다. '
+          +'지금 1인당 매출 <b>'+fmt(perRev)+'</b>보다 커서, <b>평균만큼 해서는 손해</b>입니다.</div>'
+        : '<div class="note">한 명을 더 뽑으면 매출이 <b>'+fmt(extra)+'</b> 더 나와야 본전입니다. '
+          +'지금 1인당 매출 <b>'+fmt(perRev)+'</b>보다 작아 <b>평균만 해도 남습니다</b>.</div>');
+
+    document.getElementById('be-hint').innerHTML=
+      year+'년 '+c.month+'월 기준 · 1인 인건비 <b>'+fmtNum(perHead)+'</b> · 공헌이익률 <b>'+pct(cmRate*100)+'</b>';
+  }
+
   /* ── 초과근무 히트맵 ── */
   function drawOvertime(c){
     const box=document.getElementById('ot-table');
@@ -487,7 +532,7 @@
     }
     const c=list.find(d=>d.month===month)||list[list.length-1];
     drawCards(c,list); drawHead(list,c.month); drawTenure(c.year,c.month);
-    drawTeams(c); drawOvertime(c);
+    drawTeams(c); drawBreakeven(c); drawOvertime(c);
     document.getElementById('sel-year').value=String(year);
     document.getElementById('sel-unit').value=unit;
     if(month!==null) document.getElementById('sel-month').value=String(month);
