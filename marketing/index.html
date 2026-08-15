@@ -20,6 +20,13 @@
   h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
 
   .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  .controls.months{margin-bottom:18px}
+    .drop{font:inherit;font-size:13px;font-weight:600;color:var(--ink);background-color:#fff;
+    border:1px solid var(--line);border-radius:10px;padding:8px 30px 8px 12px;cursor:pointer;
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 10px center;background-size:10px}
+  .drop:focus-visible{outline:2px solid var(--pt);outline-offset:-2px}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .seg button{font:inherit;font-size:13px;font-weight:600;color:var(--gray);
     background:#fff;border:0;padding:8px 14px;cursor:pointer;border-left:1px solid var(--line)}
@@ -129,13 +136,15 @@
 
   <div class="controls">
     <span class="seg-label">연도</span>
-    <div class="seg" id="seg-year"></div>
+    <select class="drop" id="sel-year" aria-label="연도 선택"></select>
     <span class="seg-label" style="margin-left:8px">단위</span>
-    <div class="seg" id="seg-unit">
-      <button data-u="man" aria-pressed="true">만원</button>
-      <button data-u="mil" aria-pressed="false">백만원</button>
-      <button data-u="won" aria-pressed="false">원</button>
-    </div>
+    <select class="drop" id="sel-unit" aria-label="금액 단위 선택">
+      <option value="man" selected>만원</option>
+      <option value="mil">백만원</option>
+      <option value="won">원</option>
+    </select>
+    <span class="seg-label" style="margin-left:8px">월</span>
+    <select class="drop" id="sel-month" aria-label="월 선택"></select>
   </div>
 
   <div class="notice" id="notice"></div>
@@ -206,8 +215,8 @@
       <p class="hint" id="mix-hint">막대는 광고비, 선은 ROAS입니다. 유료 광고 기준.</p>
       <div id="chart-mix" class="loading">불러오는 중…</div>
       <div class="legend">
-        <span><i style="background:var(--pt)"></i>이번 달 광고비</span>
-        <span><i style="background:var(--pt-mid)"></i>지난 달 광고비</span>
+        <span><i style="background:var(--pt)"></i>선택한 달 광고비</span>
+        <span><i style="background:var(--pt-mid)"></i>다른 달 광고비</span>
         <span><i style="background:#0F172A;height:2px;border-radius:0"></i>ROAS</span>
         <span><i style="background:#94A3B8;height:2px;border-radius:0"></i>목표 ROAS</span>
         <span><i style="background:#B45309;height:2px;border-radius:0"></i>손익분기 ROAS</span>
@@ -232,7 +241,7 @@
     auth: { persistSession:false, autoRefreshToken:false }
   });
 
-  let DATA=null, year=null, unit='man', openChannel=null;
+  let DATA=null, year=null, month=null, unit='man', openChannel=null;
 
   /* ── 숫자 표기 ──────────────────────────────────── */
   const SUFFIX={man:'만원',mil:'백만원',won:'원'};
@@ -283,8 +292,18 @@
     const years=[...set].filter(Boolean).sort((a,b)=>b-a);
     const ty=new Date().getFullYear();
     year=years.includes(ty)?ty:(years[0]??ty);
-    document.getElementById('seg-year').innerHTML=
-      years.map(y=>'<button data-y="'+y+'" aria-pressed="'+(y===year)+'">'+y+'년</button>').join('');
+    const sy=document.getElementById('sel-year');
+    sy.innerHTML=years.map(y=>'<option value="'+y+'"'+(y===year?' selected':'')+'>'+y+'년</option>').join('');
+    sy.value=String(year);
+  }
+
+  function refreshMonths(){
+    const ms=[...new Set(DATA.channel.filter(d=>+d.year===year).map(d=>+d.month))].sort((a,b)=>a-b);
+    const box=document.getElementById('sel-month');
+    if(!ms.length){ box.innerHTML=''; month=null; return; }
+    if(ms.indexOf(month)<0) month=ms[ms.length-1];
+    box.innerHTML=ms.map(m=>'<option value="'+m+'"'+(m===month?' selected':'')+'>'+m+'월</option>').join('');
+    box.value=String(month);
   }
 
   const isPaid=d=>d.paid!==false;
@@ -605,8 +624,10 @@
       syncButtons(); return;
     }
 
-    const cur=monthsPaid[monthsPaid.length-1];
-    const prev=monthsPaid.length>1?monthsPaid[monthsPaid.length-2]:null;
+    let i=monthsPaid.findIndex(d=>d.month===month);
+    if(i<0) i=monthsPaid.length-1;
+    const cur=monthsPaid[i];
+    const prev=i>0?monthsPaid[i-1]:null;
     const curMonth=cur.month;
     const curAll=totals(chYear.filter(d=>+d.month===curMonth));
 
@@ -636,15 +657,20 @@
   }
 
   function syncButtons(){
-    document.querySelectorAll('#seg-year button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.y===year));
-    document.querySelectorAll('#seg-unit button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.u===unit));
+    const sy2=document.getElementById('sel-year'); if(sy2&&year) sy2.value=String(year);
+    const su=document.getElementById('sel-unit'); if(su) su.value=unit;
+    const sm=document.getElementById('sel-month');
+    if(sm && month!==null) sm.value=String(month);
   }
 
-  document.getElementById('seg-year').addEventListener('click',function(e){
-    const b=e.target.closest('button'); if(!b) return; year=+b.dataset.y; openChannel=null; render();
+  document.getElementById('sel-year').addEventListener('change', function(e){
+    year=+e.target.value; month=null; openChannel=null; refreshMonths(); render();
   });
-  document.getElementById('seg-unit').addEventListener('click',function(e){
-    const b=e.target.closest('button'); if(!b) return; unit=b.dataset.u; render();
+  document.getElementById('sel-month').addEventListener('change',function(e){
+    month=+e.target.value; render();
+  });
+  document.getElementById('sel-unit').addEventListener('change', function(e){
+    unit=e.target.value; render();
   });
   document.getElementById('detail-close').addEventListener('click',function(){ openChannel=null; render(); });
 
@@ -687,6 +713,7 @@
         target_roas:b[2],target_conversions:b[3],margin_rate:35,ltv:12}))};
     }
     buildYears();
+    refreshMonths();
     render();
   })();
 </script>
