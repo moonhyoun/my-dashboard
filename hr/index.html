@@ -253,8 +253,8 @@
     const [hm, ht, hn, ho, pm, pc] = await Promise.all([
       db.from('hr_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('hr_team').select('*'),
-      db.from('hr_tenure').select('*').order('sort_order',{ascending:true}),
-      db.from('hr_overtime').select('*'),
+      db.from('hr_tenure_v').select('*').order('sort_order',{ascending:true}),
+      db.from('hr_overtime_v').select('*'),
       db.from('pl_monthly_v').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('pl_cost_v').select('*')
     ]);
@@ -531,8 +531,10 @@
     }
     const teams=[...new Set(DATA.team.filter(d=>+d.year===c.year && +d.month===c.month).map(d=>d.team))];
     rows.forEach(d=>{ if(teams.indexOf(d.team)<0) teams.push(d.team); });
-    const get=(t,b)=>{ const r=rows.find(d=>d.team===t && d.bucket===b); return r?+r.count||0:0; };
-    const mx=Math.max.apply(null,rows.map(d=>+d.count||0).concat([1]));
+    const get=(t,b)=>rows.filter(d=>d.team===t && d.bucket===b)
+                          .reduce((a,d)=>a+(+d.count||0),0);
+    const cells=[]; teams.forEach(t=>OT_BUCKETS.forEach(b=>cells.push(get(t,b))));
+    const mx=Math.max.apply(null,cells.concat([1]));
     const shade=(v,b)=>{
       if(!v) return '#FFFFFF';
       const heavy=(b==='21-30'||b==='30h+');
