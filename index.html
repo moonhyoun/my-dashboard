@@ -18,8 +18,10 @@
   header{margin-bottom:30px}
   h1{font-size:26px;font-weight:800;letter-spacing:-.03em}
   header p{font-size:14px;color:var(--gray);margin-top:8px}
+  .asof{display:inline-block;margin-top:10px;font-size:12px;font-weight:600;color:var(--gray);
+    background:#F5F6F8;border-radius:99px;padding:5px 12px}
 
-  .notice{display:none;margin-bottom:18px;padding:10px 14px;border-radius:10px;
+  .notice{display:none;margin-bottom:16px;padding:10px 14px;border-radius:10px;
     background:#FFF7ED;border:1px solid #FED7AA;color:#9A3412;font-size:13px}
   .notice.on{display:block}
 
@@ -27,24 +29,25 @@
 
   .card{
     display:block;text-decoration:none;color:inherit;
-    border:1px solid var(--line);border-radius:16px;padding:20px 20px 18px;
+    border:1px solid var(--line);border-radius:16px;padding:22px 20px 20px;
     min-height:186px;position:relative;
     transition:transform .18s ease, box-shadow .18s ease;
   }
   .card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(15,23,42,.08)}
   .card:focus-visible{outline:2px solid var(--dot);outline-offset:3px}
 
-  .dot{width:26px;height:26px;border-radius:8px;background:var(--dot);margin-bottom:12px}
-  .card h2{font-size:16px;font-weight:700;letter-spacing:-.02em}
+  .dot{width:28px;height:28px;border-radius:9px;background:var(--dot);margin-bottom:12px}
+  .card h2{font-size:17px;font-weight:700;letter-spacing:-.02em}
+  .card p{font-size:12.5px;color:var(--gray);margin-top:6px;line-height:1.55}
 
-  .stat{font-size:26px;font-weight:800;letter-spacing:-.03em;margin-top:12px;
-    color:var(--dot);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .stat .k{font-size:12.5px;font-weight:600;color:var(--gray);display:block;margin-bottom:2px;letter-spacing:0}
-  .sub{font-size:12.5px;color:var(--gray);margin-top:7px;line-height:1.55}
-  .sub b{font-weight:700}
-  .sub b.up{color:var(--dot)}
-  .sub b.down{color:#64748B}
-  .path{font-size:12px;color:var(--dot);font-weight:700;margin-top:14px}
+  .stat{margin-top:14px;padding-top:13px;border-top:1px solid rgba(15,23,42,.08)}
+  .stat .big{display:block;font-size:23px;font-weight:800;letter-spacing:-.03em;
+    color:var(--dot);line-height:1.15;font-variant-numeric:tabular-nums}
+  .stat .k{display:block;font-size:11.5px;color:var(--gray);font-weight:600;margin-bottom:3px}
+  .stat .sub{display:block;font-size:12px;color:var(--gray);margin-top:5px;
+    font-variant-numeric:tabular-nums}
+  .stat .sub b{color:var(--ink);font-weight:700}
+  .path{font-size:12px;color:var(--dot);font-weight:700;margin-top:12px}
 
   .c-sales    {background:#F0F5FF; --dot:#1D4ED8}
   .c-marketing{background:#F3F1FE; --dot:#6D45D9}
@@ -54,13 +57,13 @@
   .c-exec     {background:#F2F5F7; --dot:#41576B}
 
   .soon{pointer-events:none}
-  .soon .dot,.soon h2,.soon .sub{opacity:.42}
+  .soon .dot,.soon h2,.soon p{opacity:.42}
   .soon .path{display:none}
   .badge{position:absolute;top:18px;right:18px;font-size:11.5px;font-weight:700;
     color:var(--gray);background:#fff;border:1px solid var(--line);border-radius:99px;padding:4px 10px}
 
-  @media (max-width:860px){ .grid{grid-template-columns:repeat(2,1fr)} }
-  @media (max-width:560px){
+  @media (max-width:820px){ .grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:540px){
     body{padding:38px 16px 60px}
     h1{font-size:22px}
     .grid{grid-template-columns:1fr}
@@ -73,7 +76,8 @@
 <div class="wrap">
   <header>
     <h1>대시보드</h1>
-    <p id="head-sub">숫자는 Supabase에서 수정하면 자동으로 반영됩니다.</p>
+    <p>보고 싶은 영역을 선택하세요. 숫자는 Supabase에서 수정하면 자동으로 반영됩니다.</p>
+    <span class="asof" id="asof">불러오는 중…</span>
   </header>
 
   <div class="notice" id="notice"></div>
@@ -83,24 +87,36 @@
     <a class="card c-sales" href="/sales">
       <div class="dot"></div>
       <h2>영업</h2>
-      <div class="stat" id="s-val"><span class="k">매출</span>–</div>
-      <div class="sub" id="s-sub">불러오는 중…</div>
+      <p>월별 매출과 목표 달성률, 단계별 전환과 순위.</p>
+      <div class="stat">
+        <span class="k" id="k-sales">매출</span>
+        <span class="big" id="v-sales">–</span>
+        <span class="sub" id="s-sales">&nbsp;</span>
+      </div>
       <div class="path">/sales</div>
     </a>
 
     <a class="card c-marketing" href="/marketing">
       <div class="dot"></div>
       <h2>마케팅</h2>
-      <div class="stat" id="m-val"><span class="k">통합 ROAS</span>–</div>
-      <div class="sub" id="m-sub">불러오는 중…</div>
+      <p>채널별 광고비와 ROAS, 예산 소진 페이싱.</p>
+      <div class="stat">
+        <span class="k" id="k-mkt">통합 ROAS</span>
+        <span class="big" id="v-mkt">–</span>
+        <span class="sub" id="s-mkt">&nbsp;</span>
+      </div>
       <div class="path">/marketing</div>
     </a>
 
     <a class="card c-pl" href="/pl">
       <div class="dot"></div>
       <h2>손익</h2>
-      <div class="stat" id="p-val"><span class="k">영업이익</span>–</div>
-      <div class="sub" id="p-sub">불러오는 중…</div>
+      <p>영업이익과 손익분기, 비용 구조와 공헌이익.</p>
+      <div class="stat">
+        <span class="k" id="k-pl">영업이익</span>
+        <span class="big" id="v-pl">–</span>
+        <span class="sub" id="s-pl">&nbsp;</span>
+      </div>
       <div class="path">/pl</div>
     </a>
 
@@ -108,22 +124,27 @@
       <span class="badge">준비 중</span>
       <div class="dot"></div>
       <h2>고객</h2>
-      <div class="sub">신규와 이탈 고객, 재구매 흐름과 생애가치.</div>
+      <p>신규와 이탈 고객, 재구매와 생애가치.</p>
     </div>
 
     <div class="card c-hr soon">
       <span class="badge">준비 중</span>
       <div class="dot"></div>
       <h2>인사</h2>
-      <div class="sub">인원 현황과 채용·퇴사 추이.</div>
+      <p>인원 현황과 채용·퇴사 추이.</p>
     </div>
 
-    <div class="card c-exec soon">
-      <span class="badge">준비 중</span>
+    <a class="card c-exec" href="/exec">
       <div class="dot"></div>
       <h2>경영</h2>
-      <div class="sub">현금과 런웨이, 다섯 영역의 핵심 숫자.</div>
-    </div>
+      <p>현금 잔고와 런웨이, 이익과 현금의 차이.</p>
+      <div class="stat">
+        <span class="k" id="k-exec">현금 잔고</span>
+        <span class="big" id="v-exec">–</span>
+        <span class="sub" id="s-exec">&nbsp;</span>
+      </div>
+      <div class="path">/exec</div>
+    </a>
 
   </div>
 </div>
@@ -138,84 +159,95 @@
     auth:{ persistSession:false, autoRefreshToken:false }
   });
 
-  const man = v => Math.round(Number(v)||0).toLocaleString('ko-KR') + '만원';
+  const won = v => Math.round(Number(v)||0).toLocaleString('ko-KR') + '만원';
   const pct = (v,d) => (Number(v)||0).toFixed(d===undefined?1:d) + '%';
   const dv  = (a,b) => b ? a/b : 0;
-  const key = d => (+d.year)*100 + (+d.month);
-  const latest = rows => rows.length ? rows.reduce((a,b)=>key(b)>=key(a)?b:a) : null;
-
-  function gap(now, base, unit, digits){
-    const d = now - base;
-    const cls = d>=0 ? 'up' : 'down';
-    return '<b class="'+cls+'">'+(d>=0?'▲':'▼')+' '+Math.abs(d).toFixed(digits===undefined?0:digits)+unit+'</b>';
-  }
+  const set = (id,html) => { const e=document.getElementById(id); if(e) e.innerHTML=html; };
+  const last = arr => arr.length ? arr[arr.length-1] : null;
 
   (async function(){
     try{
-      const [sm, mc, mb, pm, pc] = await Promise.all([
-        db.from('sales_monthly').select('year,month,revenue,target,deals'),
-        db.from('marketing_channel').select('year,month,paid,spend,revenue'),
+      const [sm, mc, mb, pm, pc, cash] = await Promise.all([
+        db.from('sales_monthly').select('year,month,revenue,target')
+          .order('year',{ascending:true}).order('month',{ascending:true}),
+        db.from('marketing_channel').select('year,month,paid,spend,revenue,conversions')
+          .order('year',{ascending:true}).order('month',{ascending:true}),
         db.from('marketing_budget').select('year,month,target_roas'),
-        db.from('pl_monthly_v').select('*'),
-        db.from('pl_cost_v').select('*')
+        db.from('pl_monthly_v').select('year,month,revenue,target_profit')
+          .order('year',{ascending:true}).order('month',{ascending:true}),
+        db.from('pl_cost_v').select('year,month,amount'),
+        db.from('cash_monthly').select('year,month,opening,closing')
+          .order('year',{ascending:true}).order('month',{ascending:true})
       ]);
-      const err = sm.error||mc.error||mb.error||pm.error||pc.error;
+      const err = sm.error||mc.error||mb.error||pm.error||pc.error||cash.error;
       if(err) throw err;
 
       /* ── 영업 ── */
-      const sRows=(sm.data||[]).filter(d=>d.revenue!==null&&d.revenue!==undefined);
-      const s=latest(sRows);
+      const sRows = (sm.data||[]).filter(d=>d.revenue!==null&&d.revenue!==undefined);
+      const s = last(sRows);
       if(s){
-        const rate=dv(+s.revenue,+s.target)*100;
-        document.getElementById('s-val').innerHTML='<span class="k">'+s.month+'월 매출</span>'+man(s.revenue);
-        document.getElementById('s-sub').innerHTML=
-          '목표 '+man(s.target)+' 대비 <b class="'+(rate>=100?'up':'down')+'">'+pct(rate,0)+'</b>'
-          +'<br>계약 '+(Math.round(+s.deals||0)).toLocaleString('ko-KR')+'건';
+        const rate = dv(+s.revenue, +s.target)*100;
+        set('k-sales', s.month+'월 매출');
+        set('v-sales', won(s.revenue));
+        set('s-sales', '목표 '+won(s.target)+' · 달성 <b>'+pct(rate,0)+'</b>');
       }
 
       /* ── 마케팅 ── */
-      const paid=(mc.data||[]).filter(d=>d.paid!==false);
-      const mMap=new Map();
-      paid.forEach(function(d){
-        const k=key(d);
-        if(!mMap.has(k)) mMap.set(k,{year:+d.year,month:+d.month,spend:0,revenue:0});
-        const t=mMap.get(k); t.spend+=+d.spend||0; t.revenue+=+d.revenue||0;
-      });
-      const m=latest([...mMap.values()]);
-      if(m){
-        const roas=dv(m.revenue,m.spend)*100;
-        const tgt=(mb.data||[]).find(d=>+d.year===m.year&&+d.month===m.month);
-        const tr=tgt?+tgt.target_roas||0:0;
-        document.getElementById('m-val').innerHTML='<span class="k">'+m.month+'월 통합 ROAS</span>'+pct(roas,0);
-        document.getElementById('m-sub').innerHTML=
-          (tr?('목표 '+tr+'% 대비 '+gap(roas,tr,'%p')+'<br>'):'')
-          +'광고비 '+man(m.spend);
+      const paid = (mc.data||[]).filter(d=>d.paid!==false);
+      const mLast = last(paid);
+      if(mLast){
+        const y=+mLast.year, m=+mLast.month;
+        const cur = paid.filter(d=>+d.year===y && +d.month===m);
+        const sp = cur.reduce((a,d)=>a+(+d.spend||0),0);
+        const rv = cur.reduce((a,d)=>a+(+d.revenue||0),0);
+        const roas = dv(rv,sp)*100;
+        const bt = (mb.data||[]).find(d=>+d.year===y && +d.month===m);
+        const tg = bt ? +bt.target_roas||0 : 0;
+        set('k-mkt', m+'월 통합 ROAS');
+        set('v-mkt', pct(roas,0));
+        set('s-mkt', tg ? ('목표 '+tg+'% · <b>'+(roas>=tg?'▲ ':'▼ ')+Math.abs(roas-tg).toFixed(0)+'%p</b>')
+                        : ('광고비 '+won(sp)));
       }
 
       /* ── 손익 ── */
-      const p=latest(pm.data||[]);
+      const pRows = (pm.data||[]).filter(d=>d.revenue!==null&&d.revenue!==undefined);
+      const p = last(pRows);
       if(p){
-        const rows=(pc.data||[]).filter(d=>+d.year===+p.year&&+d.month===+p.month);
-        const total=rows.reduce((a,d)=>a+(+d.amount||0),0);
-        const profit=(+p.revenue||0)-total;
-        const margin=dv(profit,+p.revenue||0)*100;
-        const tm=+p.target_margin||0;
-        document.getElementById('p-val').innerHTML='<span class="k">'+p.month+'월 영업이익</span>'+man(profit);
-        document.getElementById('p-sub').innerHTML=
-          '영업이익률 <b class="'+(margin>=tm?'up':'down')+'">'+pct(margin)+'</b>'
-          +(tm?(' · 목표 '+tm+'% 대비 '+gap(margin,tm,'%p',1)):'')
-          +'<br>총비용 '+man(total);
+        const cost = (pc.data||[])
+          .filter(d=>+d.year===+p.year && +d.month===+p.month)
+          .reduce((a,d)=>a+(+d.amount||0),0);
+        const profit = (+p.revenue||0) - cost;
+        const margin = dv(profit, +p.revenue||0)*100;
+        set('k-pl', p.month+'월 영업이익');
+        set('v-pl', won(profit));
+        set('s-pl', '이익률 <b>'+pct(margin)+'</b>'
+          + (p.target_profit ? ' · 목표 대비 '+pct(dv(profit,+p.target_profit)*100,0) : ''));
       }
 
-      const stamp=[s&&s.month, m&&m.month, p&&p.month].filter(Boolean);
-      if(stamp.length) document.getElementById('head-sub').textContent=
-        '영역별 최신 마감 기준입니다. 숫자는 Supabase에서 수정하면 자동으로 반영됩니다.';
+      /* ── 경영(현금) ── */
+      const cRows = cash.data||[];
+      const cLast = last(cRows);
+      if(cLast){
+        const net = (+cLast.closing||0)-(+cLast.opening||0);
+        set('k-exec', cLast.month+'월말 현금');
+        set('v-exec', won(cLast.closing));
+        set('s-exec', '이번 달 <b>'+(net>=0?'+':'−')+won(Math.abs(net))+'</b>');
+      }
+
+      /* ── 기준 시점 ── */
+      const parts=[];
+      if(s)     parts.push('영업 '+s.year+'년 '+s.month+'월');
+      if(mLast) parts.push('마케팅 '+mLast.month+'월');
+      if(p)     parts.push('손익 '+p.month+'월');
+      if(cLast) parts.push('현금 '+cLast.month+'월');
+      document.getElementById('asof').textContent = parts.length ? ('기준 · '+parts.join(' · ')) : '기준 시점 확인 불가';
 
     }catch(e){
       const n=document.getElementById('notice');
       n.className='notice on';
-      n.textContent='숫자를 불러오지 못했습니다. ('+(e.message||e)+') 각 대시보드는 정상으로 열립니다.';
-      ['s-sub','m-sub','p-sub'].forEach(id=>{ document.getElementById(id).textContent='—'; });
+      n.textContent='핵심 숫자를 불러오지 못했습니다. ('+(e.message||e)+') 각 대시보드는 정상적으로 열립니다.';
+      document.getElementById('asof').textContent='숫자 불러오기 실패';
+      ['s-sales','s-mkt','s-pl','s-exec'].forEach(id=>set(id,'&nbsp;'));
     }
   })();
 </script>
