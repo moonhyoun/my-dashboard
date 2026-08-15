@@ -8,138 +8,238 @@
 <style>
   :root{
     --blue:#1D4ED8;
-    --blue-soft:#DBEAFE;
+    --blue-mid:#BFD3F7;
     --ink:#0F172A;
     --gray:#64748B;
     --line:#E7EAF0;
-    --bg:#FFFFFF;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{
     font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;
-    background:var(--bg);color:var(--ink);
-    -webkit-font-smoothing:antialiased;
+    background:#fff;color:var(--ink);-webkit-font-smoothing:antialiased;
     padding:28px 20px 60px;
   }
   .wrap{max-width:1180px;margin:0 auto}
+  a.back{font-size:13px;color:var(--gray);text-decoration:none}
+  a.back:hover{color:var(--blue)}
 
-  header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+  header{margin:10px 0 18px}
   h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
-  .sub{font-size:13px;color:var(--gray)}
-  .notice{
-    display:none;margin-bottom:16px;padding:10px 14px;border-radius:10px;
-    background:#FFF7ED;border:1px solid #FED7AA;color:#9A3412;font-size:13px;
+
+  /* 조작 바 */
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{
+    font:inherit;font-size:13px;font-weight:600;color:var(--gray);
+    background:#fff;border:0;padding:8px 14px;cursor:pointer;border-left:1px solid var(--line);
   }
+  .seg button:first-child{border-left:0}
+  .seg button[aria-pressed="true"]{background:var(--blue);color:#fff}
+  .seg button:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+  .seg-label{font-size:12px;color:var(--gray);font-weight:600;margin-right:2px}
+
+  .notice{display:none;margin-bottom:16px;padding:10px 14px;border-radius:10px;
+    background:#FFF7ED;border:1px solid #FED7AA;color:#9A3412;font-size:13px}
   .notice.on{display:block}
 
-  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
-  .card{border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;min-height:132px}
-  .card .label{font-size:12.5px;color:var(--gray);font-weight:600;margin-bottom:8px}
-  .card .value{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.15}
+  /* 카드 — 어떤 화면에서도 항상 한 줄 */
+  .cards{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    gap:clamp(5px,0.9vw,14px);margin-bottom:14px;
+  }
+  .card{
+    border:1px solid var(--line);border-radius:clamp(9px,1.1vw,14px);
+    padding:clamp(9px,1.3vw,18px);min-height:clamp(96px,10vw,142px);
+    min-width:0;overflow:hidden;
+  }
+  .card .label{
+    font-size:clamp(9.5px,1.05vw,12.5px);color:var(--gray);font-weight:600;
+    margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .card .value{
+    font-size:clamp(12.5px,2.05vw,24px);font-weight:800;letter-spacing:-.03em;
+    line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .card .foot{font-size:clamp(9px,1vw,12.5px);color:var(--gray);margin-top:6px;line-height:1.5}
   .card.hero{background:var(--blue);border-color:var(--blue);color:#fff}
   .card.hero .label{color:#C7D8FF}
-  .card.hero .value{font-size:34px}
-  .card .foot{font-size:12.5px;color:var(--gray);margin-top:8px}
+  .card.hero .value{font-size:clamp(14px,2.7vw,32px)}
   .card.hero .foot{color:#DCE7FF}
+  .card.hero .rateline{margin-top:8px}
+  .card.hero .rl{display:block;font-size:clamp(9px,1vw,12.5px);color:#C7D8FF;font-weight:600;margin-bottom:1px}
+  .card.hero .rv{display:block;font-size:clamp(16px,2.6vw,28px);font-weight:800;letter-spacing:-.02em;line-height:1.1}
+  .card.sum{border-color:var(--blue);background:#F7FAFF}
+  .bar-track{height:6px;border-radius:99px;background:rgba(255,255,255,.28);margin-top:10px;overflow:hidden}
+  .bar-track.plain{background:#E2E8F2}
+  .bar-fill{height:100%;background:#fff;border-radius:99px;width:0;transition:width .6s ease}
+  .bar-track.plain .bar-fill{background:var(--blue)}
 
-  .bar-track{height:7px;border-radius:99px;background:rgba(255,255,255,.28);margin-top:12px;overflow:hidden}
-  .bar-fill{height:100%;background:#fff;border-radius:99px;width:0;transition:width .7s ease}
-
-  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-bottom:14px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  .panel{border:1px solid var(--line);border-radius:14px;padding:18px}
-  .panel h2{font-size:14px;font-weight:700;margin-bottom:4px}
-  .panel .hint{font-size:12px;color:var(--gray);margin-bottom:14px}
+  .panel{border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .panel h2{font-size:14px;font-weight:700}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .seg.sm button{padding:5px 9px;font-size:12px}
+  .rank-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+  .rank-bar .hint{margin:0}
+  .panel .hint{font-size:12px;color:var(--gray);margin-top:4px;margin-bottom:14px}
   svg{display:block;width:100%;height:auto}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid2 .panel{margin-bottom:14px}
 
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--gray);margin-top:10px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+  /* 순위 */
   .rank{list-style:none;display:flex;flex-direction:column;gap:14px}
-  .rank li .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+  .rank .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
   .rank .nm{font-size:13.5px;font-weight:600}
   .rank .nm b{color:var(--gray);font-weight:700;margin-right:7px;font-variant-numeric:tabular-nums}
   .rank .amt{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
   .rank .track{height:9px;border-radius:99px;background:#F1F4F9;overflow:hidden}
-  .rank .fill{height:100%;border-radius:99px;background:var(--blue);width:0;transition:width .7s ease}
+  .rank .fill{height:100%;border-radius:99px;background:var(--blue);width:0;transition:width .6s ease}
   .rank li:nth-child(n+2) .fill{opacity:.55}
   .rank li:nth-child(n+4) .fill{opacity:.32}
 
+  /* 영업 단계 (가로형) */
+  .funnel{display:flex;align-items:flex-end;margin-top:4px}
+  .fstage{flex:1 1 0;min-width:0;text-align:center}
+  .fstage .nm{display:block;font-size:12px;font-weight:700;margin-bottom:6px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fbox{height:76px;display:flex;align-items:flex-end}
+  .fbar{width:100%;border-radius:5px 5px 0 0;background:var(--blue)}
+  .fstage .ct{display:block;font-size:11.5px;color:var(--gray);margin-top:6px;font-variant-numeric:tabular-nums}
+  .fconv{flex:0 0 auto;padding:0 5px 28px;font-size:11px;font-weight:700;color:var(--gray);white-space:nowrap}
+  .ffoot{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+  .ffoot .lb{font-size:12px;color:var(--gray)}
+  .ffoot .vl{font-size:20px;font-weight:800;color:var(--blue)}
+
   .loading{color:var(--gray);font-size:13px;padding:20px 0}
 
-  @media (max-width:900px){
-    .cards{grid-template-columns:repeat(2,1fr)}
-    .grid,.grid2{grid-template-columns:1fr}
-  }
+  @media (max-width:900px){ .grid2{grid-template-columns:1fr} }
   @media (max-width:520px){
-    body{padding:20px 14px 48px}
-    .cards{grid-template-columns:1fr}
-    .card.hero .value{font-size:30px}
+    body{padding:20px 12px 48px}
+    .panel{padding:14px}
+    .fstage .nm{font-size:11px}
+    .fstage .ct{font-size:10.5px}
+    .fconv{font-size:10px;padding:0 2px 28px}
+    .fbox{height:64px}
   }
+  @media (prefers-reduced-motion:reduce){ .bar-fill,.rank .fill{transition:none} }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>영업 대시보드</h1>
-    <span class="sub" id="period"></span>
-  </header>
+  <a class="back" href="/">← 대시보드 목록</a>
+  <header><h1>영업 대시보드</h1></header>
+
+  <div class="controls">
+    <span class="seg-label">연도</span>
+    <div class="seg" id="seg-year"></div>
+    <span class="seg-label" style="margin-left:8px">단위</span>
+    <div class="seg" id="seg-unit">
+      <button data-u="man" aria-pressed="true">만원</button>
+      <button data-u="mil" aria-pressed="false">백만원</button>
+      <button data-u="won" aria-pressed="false">원</button>
+    </div>
+  </div>
 
   <div class="notice" id="notice"></div>
 
   <section class="cards">
     <div class="card hero">
-      <div class="label">이번 달 매출</div>
+      <div class="label" id="c-rev-l">매출</div>
       <div class="value" id="c-rev">–</div>
       <div class="bar-track"><div class="bar-fill" id="c-bar"></div></div>
-      <div class="foot" id="c-rate">목표 대비 –</div>
+      <div class="rateline">
+        <span class="rl">목표 대비</span>
+        <span class="rv" id="c-rate">–</span>
+      </div>
     </div>
+
     <div class="card">
-      <div class="label">이번 달 목표</div>
+      <div class="label" id="c-tgt-l">목표</div>
       <div class="value" id="c-target">–</div>
-      <div class="foot" id="c-left">남은 금액 –</div>
+      <div class="foot" id="c-left">–</div>
     </div>
+
     <div class="card">
-      <div class="label">객단가</div>
-      <div class="value" id="c-avg">–</div>
-      <div class="foot" id="c-avg-f">매출 ÷ 계약 건수</div>
-    </div>
-    <div class="card">
-      <div class="label">계약 건수</div>
+      <div class="label" id="c-deal-l">계약 건수</div>
       <div class="value" id="c-deal">–</div>
-      <div class="foot" id="c-deal-f">최종 단계</div>
+      <div class="foot" id="c-deal-f">–</div>
+    </div>
+
+    <div class="card sum">
+      <div class="label">누적 매출</div>
+      <div class="value" id="c-sum">–</div>
+      <div class="bar-track plain"><div class="bar-fill" id="c-sum-bar"></div></div>
+      <div class="foot" id="c-sum-f">–</div>
     </div>
   </section>
 
-  <section class="grid">
-    <div class="panel">
-      <h2>월별 매출</h2>
-      <p class="hint">점선은 각 월의 목표, 진한 막대는 이번 달</p>
-      <div id="chart-bar" class="loading">불러오는 중…</div>
+  <div class="panel">
+    <h2>월별 매출</h2>
+    <p class="hint">막대 위는 매출, 막대 안은 달성률, 점선은 목표입니다.</p>
+    <div id="chart-bar" class="loading">불러오는 중…</div>
+    <div class="legend">
+      <span><i style="background:var(--blue)"></i>이번 달</span>
+      <span><i style="background:var(--blue-mid)"></i>지난 달</span>
+      <span><i style="background:#94A3B8;height:2px;border-radius:0"></i>점선 = 목표</span>
     </div>
-    <div class="panel">
-      <h2>영업 단계</h2>
-      <p class="hint">단계 사이 숫자는 다음 단계로 넘어간 비율</p>
-      <div id="chart-funnel" class="loading">불러오는 중…</div>
-    </div>
-  </section>
+  </div>
 
   <section class="grid2">
     <div class="panel">
-      <h2>담당자별 순위</h2>
-      <p class="hint">누적 매출 기준</p>
+      <div class="panel-head">
+        <h2>담당자별 순위</h2>
+        <div class="seg sm" id="seg-per-person">
+          <button data-p="month" aria-pressed="true">당월</button>
+          <button data-p="total" aria-pressed="false">누적</button>
+        </div>
+      </div>
+      <div class="rank-bar">
+        <span class="hint" id="rank-p-hint">불러오는 중…</span>
+        <div class="seg sm" id="seg-top-person">
+          <button data-n="5" aria-pressed="true">5</button>
+          <button data-n="10" aria-pressed="false">10</button>
+          <button data-n="20" aria-pressed="false">20</button>
+          <button data-n="0" aria-pressed="false">전체</button>
+        </div>
+      </div>
       <ol class="rank" id="rank-person"><li class="loading">불러오는 중…</li></ol>
     </div>
+
     <div class="panel">
-      <h2>상품별 순위</h2>
-      <p class="hint">누적 매출 기준</p>
+      <div class="panel-head">
+        <h2>품목별 순위</h2>
+        <div class="seg sm" id="seg-per-product">
+          <button data-p="month" aria-pressed="true">당월</button>
+          <button data-p="total" aria-pressed="false">누적</button>
+        </div>
+      </div>
+      <div class="rank-bar">
+        <span class="hint" id="rank-q-hint">불러오는 중…</span>
+        <div class="seg sm" id="seg-top-product">
+          <button data-n="5" aria-pressed="true">5</button>
+          <button data-n="10" aria-pressed="false">10</button>
+          <button data-n="20" aria-pressed="false">20</button>
+          <button data-n="0" aria-pressed="false">전체</button>
+        </div>
+      </div>
       <ol class="rank" id="rank-product"><li class="loading">불러오는 중…</li></ol>
     </div>
   </section>
+
+  <div class="panel">
+    <h2>영업 단계</h2>
+    <p class="hint">단계 사이 숫자는 다음 단계로 넘어간 비율</p>
+    <div id="chart-funnel" class="loading">불러오는 중…</div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  /* ── 연결 정보 ───────────────────────────────── */
-  /* 주의: 아래 두 이름을 URL / KEY 로 바꾸지 마세요.
-     URL 은 브라우저가 이미 쓰는 이름이라 충돌합니다. */
+  /* ── 연결 정보 ─────────────────────────────────────
+     아래 두 이름을 URL / KEY 로 바꾸지 마세요. 브라우저가 쓰는 이름과 충돌합니다. */
   const SUPABASE_URL = 'https://abgpkybrwtpzflkchchu.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_4LUZJYwgyDYPb-EzzpDHRw_FwEUvJ1e';
 
@@ -148,206 +248,356 @@
     auth: { persistSession: false, autoRefreshToken: false }
   });
 
-  /* ── 숫자 표기 ───────────────────────────────── */
-  const won   = n => '₩' + Math.round(n || 0).toLocaleString('ko-KR');
-  const num   = n => Math.round(n || 0).toLocaleString('ko-KR');
-  const short = n => {
-    n = n || 0;
-    if (n >= 100000000) return (n / 100000000).toFixed(n % 100000000 === 0 ? 0 : 1) + '억';
-    if (n >= 10000)     return Math.round(n / 10000).toLocaleString('ko-KR') + '만';
-    return n.toLocaleString('ko-KR');
-  };
-  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  /* ── 상태 ───────────────────────────────────────── */
+  let DATA = null;
+  let year = null;
+  let unit = 'man';       // man | mil | won  (DB는 항상 만원 단위)
+  let topPerson  = 5;     // 담당자 순위 표시 개수 (0 = 전체)
+  let topProduct = 5;     // 품목 순위 표시 개수 (0 = 전체)
+  let perPerson  = 'month';  // month = 당월, total = 연간 누적
+  let perProduct = 'month';
 
-  /* ── 데이터 불러오기 ─────────────────────────── */
-  async function load() {
-    const [m, p, r] = await Promise.all([
-      db.from('sales_monthly').select('*').order('sort_order', { ascending: true }),
-      db.from('sales_pipeline').select('*').order('sort_order', { ascending: true }),
-      db.from('sales_rank').select('*').order('amount', { ascending: false })
+  /* ── 숫자 표기 ──────────────────────────────────── */
+  const SUFFIX = { man:'만원', mil:'백만원', won:'원' };
+
+  function fmtNum(v){
+    v = Number(v) || 0;
+    if (unit === 'man') return Math.round(v).toLocaleString('ko-KR');
+    if (unit === 'mil') return (v/100).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+    return Math.round(v*10000).toLocaleString('ko-KR');
+  }
+  const fmt = v => fmtNum(v) + SUFFIX[unit];
+  const cnt = n => (Math.round(Number(n)||0)).toLocaleString('ko-KR');
+  function fmtAxis(v){
+    if (unit === 'won'){
+      const w = (Number(v)||0) * 10000;
+      if (w >= 100000000) return (w/100000000).toFixed(1).replace(/\.0$/,'') + '억';
+      return Math.round(w/10000).toLocaleString('ko-KR') + '만';
+    }
+    return fmtNum(v);
+  }
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  /* ── 데이터 ─────────────────────────────────────── */
+  async function load(){
+    const [m,p,r] = await Promise.all([
+      db.from('sales_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
+      db.from('sales_pipeline').select('*').order('year',{ascending:true}).order('sort_order',{ascending:true}),
+      db.from('sales_rank').select('*').order('amount',{ascending:false})
     ]);
     const err = m.error || p.error || r.error;
     if (err) throw err;
-    return { monthly: m.data || [], pipeline: p.data || [], rank: r.data || [] };
+    return { monthly:m.data||[], pipeline:p.data||[], rank:r.data||[] };
   }
 
-  /* ── 카드 ────────────────────────────────────── */
-  function drawCards(monthly, pipeline) {
-    const cur    = monthly[monthly.length - 1] || { month: '-', revenue: 0, target: 0 };
-    const rev    = Number(cur.revenue) || 0;
-    const target = Number(cur.target)  || 0;
-    const deals  = pipeline.length ? Number(pipeline[pipeline.length - 1].count) || 0 : 0;
-    const rate   = target ? rev / target * 100 : 0;
-    const left   = target - rev;
+  /* ── 연도 버튼 ──────────────────────────────────── */
+  function buildYears(){
+    const set = new Set();
+    DATA.monthly.forEach(d => set.add(+d.year));
+    DATA.pipeline.forEach(d => set.add(+d.year));
+    DATA.rank.forEach(d => set.add(+d.year));
+    const years = [...set].filter(Boolean).sort((a,b)=>b-a);
+    const thisYear = new Date().getFullYear();
+    year = years.includes(thisYear) ? thisYear : (years[0] ?? thisYear);
+    document.getElementById('seg-year').innerHTML =
+      years.map(y=>'<button data-y="'+y+'" aria-pressed="'+(y===year)+'">'+y+'년</button>').join('');
+  }
 
-    document.getElementById('period').textContent = cur.month ? cur.month + ' 기준' : '';
-    document.getElementById('c-rev').textContent    = won(rev);
-    document.getElementById('c-rate').textContent   = '목표 대비 ' + rate.toFixed(1) + '%';
-    document.getElementById('c-target').textContent = won(target);
-    document.getElementById('c-left').textContent   = left > 0 ? '남은 금액 ' + won(left) : '목표 초과 ' + won(-left);
-    document.getElementById('c-avg').textContent    = deals ? won(rev / deals) : '–';
-    document.getElementById('c-avg-f').textContent  = deals ? won(rev) + ' ÷ ' + num(deals) + '건' : '계약 건수 없음';
-    document.getElementById('c-deal').textContent   = num(deals) + '건';
-    document.getElementById('c-deal-f').textContent = pipeline.length ? esc(pipeline[pipeline.length - 1].stage) : '단계 없음';
+  /* ── 카드 ───────────────────────────────────────── */
+  function drawCards(rows, pipe){
+    const done = rows.filter(d => d.revenue !== null && d.revenue !== undefined);
+    const cur  = done[done.length-1] || rows[0] || {month:'-',revenue:0,target:0,deals:0};
+    const rev = +cur.revenue||0, tgt = +cur.target||0, deals = +cur.deals||0;
+    const rate = tgt ? rev/tgt*100 : 0;
+    const left = tgt - rev;
+    const yearDeals = pipe.length ? +pipe[pipe.length-1].count||0 : done.reduce((s,d)=>s+(+d.deals||0),0);
 
-    requestAnimationFrame(() => {
-      document.getElementById('c-bar').style.width = Math.max(0, Math.min(100, rate)) + '%';
+    document.getElementById('c-rev-l').textContent  = cur.month + '월 매출';
+    document.getElementById('c-rev').textContent    = fmt(rev);
+    document.getElementById('c-rate').textContent   = rate.toFixed(1) + '%';
+    document.getElementById('c-tgt-l').textContent  = cur.month + '월 목표';
+    document.getElementById('c-target').textContent = fmt(tgt);
+    document.getElementById('c-left').textContent   = left > 0 ? '남은 금액 ' + fmt(left) : '목표 초과 ' + fmt(-left);
+    document.getElementById('c-deal-l').textContent = cur.month + '월 계약';
+    document.getElementById('c-deal').textContent   = deals ? cnt(deals)+'건' : '–';
+    document.getElementById('c-deal-f').textContent = year + '년 누적 ' + cnt(yearDeals) + '건';
+
+    /* 누적 매출 */
+    const sumR  = done.reduce((a,d)=>a+(+d.revenue||0),0);
+    const sumT  = done.reduce((a,d)=>a+(+d.target||0),0);
+    const yearT = rows.reduce((a,d)=>a+(+d.target||0),0);
+    const sumRate = sumT ? sumR/sumT*100 : 0;
+    const range = done.length ? done[0].month + '~' + done[done.length-1].month + '월' : '집계 전';
+
+    document.getElementById('c-sum').textContent = fmt(sumR);
+    document.getElementById('c-sum-f').innerHTML =
+      range + ' · 달성률 <b style="color:var(--blue)">' + sumRate.toFixed(0) + '%</b>'
+      + '<br>목표 ' + fmtNum(sumT)
+      + '<br>연간 ' + fmtNum(yearT);
+
+    const b1 = document.getElementById('c-bar'), b2 = document.getElementById('c-sum-bar');
+    b1.style.width = '0%'; b2.style.width = '0%';
+    requestAnimationFrame(function(){
+      b1.style.width = Math.max(0,Math.min(100,rate))+'%';
+      b2.style.width = Math.max(0,Math.min(100,sumRate))+'%';
     });
   }
 
-  /* ── 막대그래프 (SVG) ───────────────────────── */
-  function drawBars(rows) {
+  /* ── 월별 막대그래프 ──────────────────────────────
+     화면 폭에 따라 두 가지 크기로 그립니다.
+     좁은 화면에서는 좌우 여백과 세로축을 없애 밀지 않고도 다 보이게 합니다. */
+  function drawBars(rows){
     const box = document.getElementById('chart-bar');
-    if (!rows.length) { box.textContent = '데이터가 없습니다.'; return; }
+    box.className='';
+    if (!rows.length){ box.textContent='데이터가 없습니다.'; return; }
 
-    const W = 660, H = 330, PL = 58, PR = 14, PT = 18, PB = 40;
-    const iw = W - PL - PR, ih = H - PT - PB;
-    const peak = Math.max(...rows.map(d => Math.max(+d.revenue || 0, +d.target || 0)), 1);
-    const max  = peak * 1.18;
-    const y    = v => PT + ih - (v / max) * ih;
+    const cw = box.clientWidth || 800;
+    const narrow = cw < 560;
 
-    const slot = iw / rows.length;
-    const bw   = Math.min(44, slot * 0.46);
-    let s = '';
+    const W  = narrow ? 400 : 820;
+    const H  = narrow ? 236 : 318;
+    const PL = narrow ? 4  : 56;
+    const PR = narrow ? 4  : 16;
+    const PT = narrow ? 30 : 46;
+    const PB = narrow ? 24 : 40;
+    const FS_VAL = narrow ? 8   : 11;
+    const FS_TGT = narrow ? 7.5 : 10;
+    const FS_MON = narrow ? 8.5 : 11;
+    const RADIUS = narrow ? 2 : 4;
 
-    for (let i = 0; i <= 4; i++) {
-      const v = max / 4 * i, yy = y(v);
-      s += `<line x1="${PL}" y1="${yy}" x2="${W - PR}" y2="${yy}" stroke="#EDF0F5" stroke-width="1"/>`;
-      s += `<text x="${PL - 10}" y="${yy + 4}" text-anchor="end" font-size="11" fill="#94A3B8">${short(v)}</text>`;
+    const iw=W-PL-PR, ih=H-PT-PB;
+    const peak = Math.max(...rows.map(d=>Math.max(+d.revenue||0,+d.target||0)),1);
+    const max  = peak*1.24;
+    const y    = v => PT+ih-(v/max)*ih;
+
+    const done = rows.filter(d=>d.revenue!==null&&d.revenue!==undefined);
+    const nowM = done.length ? +done[done.length-1].month : null;
+
+    const slot=iw/rows.length;
+    const bw = narrow ? Math.min(21, slot*0.62) : Math.min(32, slot*0.5);
+    let s='';
+
+    s+='<text x="'+(narrow?2:6)+'" y="'+(narrow?12:20)+'" font-size="'+(narrow?8:11)+'" fill="#94A3B8">단위: '+SUFFIX[unit]+'</text>';
+
+    if(!narrow){
+      for(let i=0;i<=4;i++){
+        const v=max/4*i, yy=y(v);
+        s+='<line x1="'+PL+'" y1="'+yy+'" x2="'+(PL+iw)+'" y2="'+yy+'" stroke="#EDF0F5"/>';
+        s+='<text x="'+(PL-10)+'" y="'+(yy+4)+'" text-anchor="end" font-size="11" fill="#94A3B8">'+fmtAxis(v)+'</text>';
+      }
+    }else{
+      s+='<line x1="'+PL+'" y1="'+(PT+ih)+'" x2="'+(PL+iw)+'" y2="'+(PT+ih)+'" stroke="#EDF0F5"/>';
     }
 
-    rows.forEach((d, i) => {
-      const cx = PL + slot * i + slot / 2;
-      const rv = +d.revenue || 0, tg = +d.target || 0;
-      const last = i === rows.length - 1;
-      const top = y(rv);
-      s += `<rect x="${cx - bw / 2}" y="${top}" width="${bw}" height="${Math.max(0, PT + ih - top)}" rx="5"
-             fill="${last ? 'var(--blue)' : '#BFD3F7'}"/>`;
-      if (tg > 0) {
-        const ty = y(tg);
-        s += `<line x1="${cx - bw / 2 - 7}" y1="${ty}" x2="${cx + bw / 2 + 7}" y2="${ty}"
-               stroke="#94A3B8" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+    let prevTarget = null;
+    rows.forEach(function(d,i){
+      const cx = PL+slot*i+slot/2;
+      const rv = (d.revenue===null||d.revenue===undefined) ? null : +d.revenue;
+      const tg = +d.target||0;
+      const isNow = +d.month === nowM;
+
+      if(tg>0){
+        const ty=y(tg);
+        s+='<line x1="'+(cx-slot/2+2)+'" y1="'+ty+'" x2="'+(cx+slot/2-2)+'" y2="'+ty+'" stroke="#94A3B8" stroke-width="1.4" stroke-dasharray="4 3"/>';
+        if(tg!==prevTarget){
+          s+='<text x="'+(cx-slot/2+2)+'" y="'+(ty-5)+'" font-size="'+FS_TGT+'" font-weight="600" fill="#94A3B8">'+fmtNum(tg)+'</text>';
+          prevTarget=tg;
+        }
       }
-      if (last) {
-        s += `<text x="${cx}" y="${top - 9}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">${short(rv)}</text>`;
+
+      if(rv !== null){
+        const top=y(rv), h=Math.max(0,PT+ih-top);
+        const rate = tg ? rv/tg*100 : 0;
+        s+='<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+h+'" rx="'+RADIUS+'" fill="'+(isNow?'var(--blue)':'var(--blue-mid)')+'"/>';
+        s+='<text x="'+cx+'" y="'+(top-(narrow?5:8))+'" text-anchor="middle" font-size="'+FS_VAL+'" font-weight="700" fill="'+(isNow?'#1D4ED8':'#0F172A')+'">'+fmtNum(rv)+'</text>';
+        const fp = narrow ? 7 : 10;
+        if(h > (narrow?15:34)){
+          s+='<text x="'+cx+'" y="'+(top+(narrow?11:17))+'" text-anchor="middle" font-size="'+fp+'" font-weight="700" fill="'+(isNow?'#fff':'#1D4ED8')+'">'+rate.toFixed(0)+'%</text>';
+        }else{
+          s+='<text x="'+cx+'" y="'+(top-(narrow?14:22))+'" text-anchor="middle" font-size="'+fp+'" font-weight="700" fill="#94A3B8">'+rate.toFixed(0)+'%</text>';
+        }
       }
-      s += `<text x="${cx}" y="${H - 14}" text-anchor="middle" font-size="11.5"
-             font-weight="${last ? 700 : 500}" fill="${last ? '#0F172A' : '#94A3B8'}">${esc(d.month)}</text>`;
+      s+='<text x="'+cx+'" y="'+(H-(narrow?8:14))+'" text-anchor="middle" font-size="'+FS_MON+'" font-weight="'+(isNow?700:500)+'" fill="'+(isNow?'#0F172A':'#94A3B8')+'">'+d.month+(narrow?'':'월')+'</text>';
     });
 
-    box.classList.remove('loading');
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="월별 매출 막대그래프">${s}</svg>`;
+    box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+year+'년 월별 매출 막대그래프">'+s+'</svg>';
   }
 
-  /* ── 깔때기 (SVG) ───────────────────────────── */
-  function drawFunnel(rows) {
-    const box = document.getElementById('chart-funnel');
-    if (!rows.length) { box.textContent = '데이터가 없습니다.'; return; }
+  /* ── 영업 단계 (가로형) ─────────────────────────── */
+  function drawFunnel(rows){
+    const box=document.getElementById('chart-funnel');
+    box.className='';
+    if(!rows.length){ box.innerHTML='<p class="loading">데이터가 없습니다.</p>'; return; }
 
-    const W = 380, SH = 52, GAP = 30, PT = 6, FOOT = 52;
-    const n = rows.length;
-    const H = PT + n * SH + (n - 1) * GAP + FOOT;
-    const cx = W / 2, maxW = W - 20, minW = 110;
-    const first = +rows[0].count || 1;
-    const widthOf = i => {
-      const c = +rows[i].count || 0;
-      return minW + (maxW - minW) * (first ? c / first : 0);
-    };
-
-    let s = '';
-    rows.forEach((d, i) => {
-      const yTop = PT + i * (SH + GAP);
-      const w1 = widthOf(i);
-      const w2 = i < n - 1 ? widthOf(i + 1) : w1 * 0.94;
-      const op = (1 - i / Math.max(n, 2) * 0.55).toFixed(2);
-      s += `<polygon points="${cx - w1 / 2},${yTop} ${cx + w1 / 2},${yTop} ${cx + w2 / 2},${yTop + SH} ${cx - w2 / 2},${yTop + SH}"
-             fill="var(--blue)" opacity="${op}"/>`;
-      s += `<text x="${cx}" y="${yTop + 21}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">${esc(d.stage)}</text>`;
-      s += `<text x="${cx}" y="${yTop + 39}" text-anchor="middle" font-size="12" fill="#EAF1FF">${num(d.count)}건</text>`;
-
-      if (i < n - 1) {
-        const prev = +d.count || 0, next = +rows[i + 1].count || 0;
-        const pct = prev ? (next / prev * 100).toFixed(1) : '0.0';
-        s += `<text x="${cx}" y="${yTop + SH + 20}" text-anchor="middle" font-size="12" font-weight="600" fill="#64748B">↓ ${pct}%</text>`;
+    const first=+rows[0].count||1;
+    let h='<div class="funnel">';
+    rows.forEach(function(d,i){
+      const c=+d.count||0;
+      const bh=Math.round(18+58*(c/(first||1)));
+      const op=(1-i/Math.max(rows.length,2)*0.5).toFixed(2);
+      h+='<div class="fstage"><span class="nm">'+esc(d.stage)+'</span>'
+       + '<div class="fbox"><div class="fbar" style="height:'+bh+'px;opacity:'+op+'"></div></div>'
+       + '<span class="ct">'+cnt(c)+'건</span></div>';
+      if(i<rows.length-1){
+        const nx=+rows[i+1].count||0;
+        const p=c?(nx/c*100).toFixed(1):'0.0';
+        h+='<div class="fconv">▸'+p+'%</div>';
       }
     });
+    h+='</div>';
 
-    const total = first ? ((+rows[n - 1].count || 0) / first * 100).toFixed(1) : '0.0';
-    const fy = PT + n * SH + (n - 1) * GAP + 30;
-    s += `<line x1="20" y1="${fy - 20}" x2="${W - 20}" y2="${fy - 20}" stroke="#E7EAF0" stroke-width="1"/>`;
-    s += `<text x="20" y="${fy + 4}" font-size="12" fill="#64748B">최종 전환율</text>`;
-    s += `<text x="${W - 20}" y="${fy + 6}" text-anchor="end" font-size="17" font-weight="800" fill="var(--blue)">${total}%</text>`;
-
-    box.classList.remove('loading');
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="영업 단계 깔때기">${s}</svg>`;
+    const last=+rows[rows.length-1].count||0;
+    const total=first?(last/first*100).toFixed(1):'0.0';
+    h+='<div class="ffoot"><span class="lb">최종 전환율 · '+esc(rows[0].stage)+' → '+esc(rows[rows.length-1].stage)+'</span>'
+     + '<span class="vl">'+total+'%</span></div>';
+    box.innerHTML=h;
   }
 
-  /* ── 순위 ────────────────────────────────────── */
-  function drawRank(id, rows) {
-    const el = document.getElementById(id);
-    if (!rows.length) { el.innerHTML = '<li class="loading">데이터가 없습니다.</li>'; return; }
-    const top = Math.max(...rows.map(d => +d.amount || 0), 1);
-    el.innerHTML = rows.map((d, i) => `
-      <li>
-        <div class="top">
-          <span class="nm"><b>${i + 1}</b>${esc(d.name)}</span>
-          <span class="amt">${won(d.amount)}</span>
-        </div>
-        <div class="track"><div class="fill" data-w="${(+d.amount || 0) / top * 100}"></div></div>
-      </li>`).join('');
-    requestAnimationFrame(() => {
-      el.querySelectorAll('.fill').forEach(f => f.style.width = f.dataset.w + '%');
+  /* ── 순위 ───────────────────────────────────────── */
+  function drawRank(id, rows, n){
+    const el=document.getElementById(id);
+    const all=rows.length;
+    if(!all){ el.innerHTML='<li class="loading">데이터가 없습니다.</li>'; return {shown:0, all:0}; }
+    const shown = n > 0 ? rows.slice(0, n) : rows;
+    const top=Math.max(...shown.map(d=>+d.amount||0),1);
+    el.innerHTML=shown.map(function(d,i){
+      return '<li><div class="top"><span class="nm"><b>'+(i+1)+'</b>'+esc(d.name)+'</span>'
+           + '<span class="amt">'+fmt(d.amount)+'</span></div>'
+           + '<div class="track"><div class="fill" data-w="'+((+d.amount||0)/top*100)+'"></div></div></li>';
+    }).join('');
+    requestAnimationFrame(function(){
+      el.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w+'%');
     });
+    return { shown: shown.length, all: all };
   }
 
-  /* ── 실행 ────────────────────────────────────── */
-  (async () => {
-    let data;
-    try {
-      data = await load();
-      if (!data.monthly.length && !data.pipeline.length && !data.rank.length) {
-        throw new Error('테이블이 비어 있습니다.');
-      }
-    } catch (e) {
-      const box = document.getElementById('notice');
-      box.className = 'notice on';
-      box.textContent = '데이터를 불러오지 못해 예시 값을 보여주고 있습니다. (' + (e.message || e) + ') — Supabase 테이블의 읽기 권한(RLS) 설정을 확인해 주세요.';
-      data = {
-        monthly: [
-          { month: '3월', revenue: 82000000,  target: 90000000 },
-          { month: '4월', revenue: 96000000,  target: 95000000 },
-          { month: '5월', revenue: 88000000,  target: 100000000 },
-          { month: '6월', revenue: 112000000, target: 105000000 },
-          { month: '7월', revenue: 104000000, target: 110000000 },
-          { month: '8월', revenue: 126000000, target: 120000000 }
+  /* ── 전체 그리기 ────────────────────────────────── */
+  /* 당월 = 그 해에 실적이 입력된 마지막 달, 누적 = 그 해 전체 합계 */
+  function rankRows(rank, kind, mode, curMonth){
+    const src = rank.filter(d=>d.kind===kind);
+    if(!src.length) return { rows:[], fellBack:false };
+
+    if(mode==='month' && curMonth){
+      const only = src.filter(d=>+d.month===curMonth);
+      if(only.length) return { rows:only.slice().sort((a,b)=>b.amount-a.amount), fellBack:false };
+      // month 칼럼이 아직 없는 옛 데이터면 누적으로 대신 보여줍니다
+    }
+    const map=new Map();
+    src.forEach(d=>map.set(d.name,(map.get(d.name)||0)+(+d.amount||0)));
+    const rows=[...map.entries()].map(e=>({name:e[0],amount:e[1]})).sort((a,b)=>b.amount-a.amount);
+    return { rows:rows, fellBack: mode==='month' };
+  }
+
+  function render(){
+    if(!DATA) return;
+    const monthly  = DATA.monthly.filter(d=>+d.year===year).sort((a,b)=>a.month-b.month);
+    const pipeline = DATA.pipeline.filter(d=>+d.year===year).sort((a,b)=>a.sort_order-b.sort_order);
+    const rank     = DATA.rank.filter(d=>+d.year===year);
+
+    const done = monthly.filter(d=>d.revenue!==null&&d.revenue!==undefined);
+    const curMonth = done.length ? +done[done.length-1].month : null;
+
+    drawCards(monthly, pipeline);
+    drawBars(monthly);
+    drawFunnel(pipeline);
+
+    const rsP = rankRows(rank,'person',  perPerson,  curMonth);
+    const rsQ = rankRows(rank,'product', perProduct, curMonth);
+    const rp = drawRank('rank-person',  rsP.rows, topPerson);
+    const rq = drawRank('rank-product', rsQ.rows, topProduct);
+
+    function hint(r, rs, mode){
+      if(!r || !r.all) return '데이터가 없습니다.';
+      let period;
+      if(rs.fellBack) period = year+'년 누적 (월별 데이터 없음)';
+      else if(mode==='month' && curMonth) period = year+'년 '+curMonth+'월';
+      else period = year+'년 누적';
+      return period + ' · 상위 ' + r.shown + '건 / 전체 ' + r.all + '건';
+    }
+    document.getElementById('rank-p-hint').textContent = hint(rp, rsP, perPerson);
+    document.getElementById('rank-q-hint').textContent = hint(rq, rsQ, perProduct);
+
+    const mLabel = curMonth ? curMonth+'월' : '당월';
+    document.querySelectorAll('#seg-per-person button[data-p="month"],#seg-per-product button[data-p="month"]')
+      .forEach(b=>b.textContent=mLabel);
+    document.querySelectorAll('#seg-year button').forEach(b=>b.setAttribute('aria-pressed', +b.dataset.y===year));
+    document.querySelectorAll('#seg-unit button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.u===unit));
+    document.querySelectorAll('#seg-top-person button').forEach(b=>b.setAttribute('aria-pressed', +b.dataset.n===topPerson));
+    document.querySelectorAll('#seg-top-product button').forEach(b=>b.setAttribute('aria-pressed', +b.dataset.n===topProduct));
+    document.querySelectorAll('#seg-per-person button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.p===perPerson));
+    document.querySelectorAll('#seg-per-product button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.p===perProduct));
+  }
+
+  document.getElementById('seg-per-person').addEventListener('click', function(e){
+    const b=e.target.closest('button'); if(!b) return;
+    perPerson = b.dataset.p; render();
+  });
+  document.getElementById('seg-per-product').addEventListener('click', function(e){
+    const b=e.target.closest('button'); if(!b) return;
+    perProduct = b.dataset.p; render();
+  });
+
+  document.getElementById('seg-top-person').addEventListener('click', function(e){
+    const b=e.target.closest('button'); if(!b) return;
+    topPerson = +b.dataset.n; render();
+  });
+  document.getElementById('seg-top-product').addEventListener('click', function(e){
+    const b=e.target.closest('button'); if(!b) return;
+    topProduct = +b.dataset.n; render();
+  });
+
+  document.getElementById('seg-year').addEventListener('click', function(e){
+    const b=e.target.closest('button'); if(!b) return;
+    year = +b.dataset.y; render();
+  });
+  document.getElementById('seg-unit').addEventListener('click', function(e){
+    const b=e.target.closest('button'); if(!b) return;
+    unit = b.dataset.u; render();
+  });
+
+  let resizeTimer;
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(render, 200);
+  });
+
+  /* ── 실행 ───────────────────────────────────────── */
+  (async function(){
+    try{
+      DATA = await load();
+      if(!DATA.monthly.length) throw new Error('sales_monthly 테이블이 비어 있습니다.');
+    }catch(e){
+      const n=document.getElementById('notice');
+      n.className='notice on';
+      n.textContent='데이터를 불러오지 못해 예시 값을 보여주고 있습니다. ('+(e.message||e)+') — SQL을 다시 실행했는지, 읽기 권한(RLS)이 열려 있는지 확인해 주세요.';
+      const mk=(y,m,r,t,d)=>({year:y,month:m,revenue:r,target:t,deals:d});
+      DATA={
+        monthly:[
+          mk(2026,1,7940,9200,151),mk(2026,2,6200,9200,121),mk(2026,3,6900,9200,133),
+          mk(2026,4,7100,9200,136),mk(2026,5,7310,9200,141),mk(2026,6,8050,9200,152),
+          mk(2026,7,8470,9200,159),mk(2026,8,null,9200,null),mk(2026,9,null,9200,null),
+          mk(2026,10,null,9500,null),mk(2026,11,null,9500,null),mk(2026,12,null,9500,null)
         ],
-        pipeline: [
-          { stage: '리드',   count: 480 },
-          { stage: '상담',   count: 260 },
-          { stage: '제안',   count: 140 },
-          { stage: '협상',   count: 72 },
-          { stage: '계약',   count: 42 }
+        pipeline:[
+          {year:2026,sort_order:1,stage:'문의',count:6900},{year:2026,sort_order:2,stage:'견적',count:3170},
+          {year:2026,sort_order:3,stage:'협상',count:1680},{year:2026,sort_order:4,stage:'계약',count:993}
         ],
-        rank: [
-          { kind: 'person',  name: '김서연', amount: 38000000 },
-          { kind: 'person',  name: '박준호', amount: 31000000 },
-          { kind: 'person',  name: '이하늘', amount: 26000000 },
-          { kind: 'person',  name: '최민재', amount: 19000000 },
-          { kind: 'person',  name: '정유진', amount: 12000000 },
-          { kind: 'product', name: '엔터프라이즈 플랜', amount: 54000000 },
-          { kind: 'product', name: '팀 플랜',           amount: 33000000 },
-          { kind: 'product', name: '연간 유지보수',     amount: 21000000 },
-          { kind: 'product', name: '온보딩 컨설팅',     amount: 12000000 },
-          { kind: 'product', name: '추가 좌석',         amount: 6000000 }
+        rank:[
+          {year:2026,month:7,kind:'person',name:'김도현',amount:2010},
+          {year:2026,month:7,kind:'person',name:'이수진',amount:1780},
+          {year:2026,month:7,kind:'person',name:'박민재',amount:1610},
+          {year:2026,month:7,kind:'person',name:'정하늘',amount:1440},
+          {year:2026,month:7,kind:'person',name:'최유진',amount:1630},
+          {year:2026,month:7,kind:'product',name:'기업용 솔루션',amount:2880},
+          {year:2026,month:7,kind:'product',name:'프리미엄 컨설팅',amount:2120},
+          {year:2026,month:7,kind:'product',name:'고급형 플랜',amount:1520},
+          {year:2026,month:7,kind:'product',name:'연간 유지보수',amount:1100},
+          {year:2026,month:7,kind:'product',name:'추가 좌석',amount:850}
         ]
       };
     }
-
-    drawCards(data.monthly, data.pipeline);
-    drawBars(data.monthly);
-    drawFunnel(data.pipeline);
-    drawRank('rank-person',  data.rank.filter(d => d.kind === 'person'));
-    drawRank('rank-product', data.rank.filter(d => d.kind === 'product'));
+    buildYears();
+    render();
   })();
 </script>
 </body>
