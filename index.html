@@ -169,7 +169,12 @@
     auth:{ persistSession:false, autoRefreshToken:false }
   });
 
-  const won = v => Math.round(Number(v)||0).toLocaleString('ko-KR') + '만원';
+  /* DB는 원 단위. 큰 금액은 만원으로 줄여 보여줍니다. */
+  const won = v => {
+    const n = Math.round(Number(v)||0);
+    if (Math.abs(n) >= 10000) return Math.round(n/10000).toLocaleString('ko-KR') + '만원';
+    return n.toLocaleString('ko-KR') + '원';
+  };
   const pct = (v,d) => (Number(v)||0).toFixed(d===undefined?1:d) + '%';
   const dv  = (a,b) => b ? a/b : 0;
   const set = (id,html) => { const e=document.getElementById(id); if(e) e.innerHTML=html; };
