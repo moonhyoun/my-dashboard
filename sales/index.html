@@ -407,6 +407,10 @@
 
   /* ── 카드 ───────────────────────────────────────── */
   /* 전년 동월 대비 */
+  const bare = t => t.replace('전년 대비 ','전년 ')
+                     .replace('전년 동월 자료 없음','전년 자료 없음')
+                     .replace('전년 동월과 동일','전년과 동일');
+
   function yoy(now, before, f, suffix, onDark){
     if(before===null||before===undefined||!before) return '전년 동월 자료 없음';
     const d=now-before, r=d/before*100;
@@ -437,8 +441,14 @@
     document.getElementById('c-left').textContent   = left > 0 ? '남은 금액 ' + fmt(left) : '목표 초과 ' + fmt(-left);
     document.getElementById('c-deal-l').textContent = cur.month + '월 계약';
     document.getElementById('c-deal').textContent   = deals ? cnt(deals)+'건' : '–';
-    document.getElementById('c-deal-f').innerHTML = year + '년 누적 ' + cnt(yearDeals) + '건<br>'
-      + yoy(deals, py?+py.deals||0:null, v=>Math.round(v).toLocaleString('ko-KR'), '건');
+    /* 계약 금액은 그 달 매출과 같으므로, 대신 계약 한 건당 단가를 보여줍니다. */
+    const unitPrice = deals ? rev/deals : 0;
+    const pyUnit = (py && +py.deals) ? (+py.revenue||0)/(+py.deals) : null;
+    document.getElementById('c-deal-f').innerHTML =
+      '계약 단가 ' + (deals ? fmt(unitPrice) : '–')
+      + '<br>' + year + '년 누적 ' + cnt(yearDeals) + '건'
+      + '<br>' + yoy(deals, py?+py.deals||0:null, v=>Math.round(v).toLocaleString('ko-KR'), '건')
+      + '<br>단가 ' + bare(yoy(unitPrice, pyUnit, fmtNum, SUFFIX[unit]));
     document.getElementById('c-rev-yoy').innerHTML =
       yoy(rev, py?+py.revenue||0:null, fmtNum, SUFFIX[unit], true);
 
