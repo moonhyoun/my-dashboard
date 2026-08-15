@@ -266,6 +266,10 @@
          + f(Math.abs(d))+(suffix||'')+' ('+(d>0?'+':'−')+Math.abs(r).toFixed(1)+'%)</span>';
   }
 
+  const bare = t => t.replace('전년 대비 ','전년 ')
+                     .replace('전년 동월 자료 없음','전년 자료 없음')
+                     .replace('전년 동월과 동일','전년과 동일');
+
   function momText(now,before,f,suffix){
     if(before===null||before===undefined||!isFinite(before)) return '전월 —';
     const d=now-before;
@@ -375,7 +379,8 @@
       chip('flat',momText(c.total,p?p.total:null,fmtNum,SUFFIX[unit]));
     document.getElementById('c-cost-f').innerHTML=
       '고정 '+fmtNum(c.fixed)+' · 변동 '+fmtNum(c.variable)+'<br>매출 대비 '+pct(dv(c.total,c.revenue)*100)
-      +'<br>'+yoy(c.total, py?py.total:null, fmtNum, SUFFIX[unit]);
+      +'<br>'+yoy(c.total, py?py.total:null, fmtNum, SUFFIX[unit])
+      +'<br>고정비 '+bare(yoy(c.fixed, py?py.fixed:null, fmtNum, SUFFIX[unit]));
   }
 
   /* ── 폭포 그래프 ────────────────────────────────── */
