@@ -1,0 +1,93 @@
+-- ══════════════════════════════════════════════════
+--  현재 구조 뽑아내기
+--  결과를 복사해 SCHEMA.md 의 해당 자리에 붙여넣으세요.
+--  구조를 바꿀 때마다 다시 실행해 갱신합니다.
+-- ══════════════════════════════════════════════════
+
+-- ── ① 테이블과 뷰의 칼럼 목록 ──
+select
+  c.table_name                                   as "테이블",
+  case t.table_type when 'VIEW' then '뷰' else '표' end as "종류",
+  c.ordinal_position                             as "순서",
+  c.column_name                                  as "칼럼",
+  c.data_type                                    as "자료형",
+  case c.is_nullable when 'NO' then '필수' else '' end as "필수",
+  coalesce(c.column_default, '')                 as "기본값"
+from information_schema.columns c
+join information_schema.tables t
+  on t.table_schema = c.table_schema and t.table_name = c.table_name
+where c.table_schema = 'public'
+order by t.table_type, c.table_name, c.ordinal_position;
+
+
+-- ── ② 정해진 값만 받는 칸 (check 제약) ──
+select
+  rel.relname                    as "테이블",
+  con.conname                    as "제약 이름",
+  pg_get_constraintdef(con.oid)  as "허용되는 값"
+from pg_constraint con
+join pg_class rel on rel.oid = con.conrelid
+join pg_namespace ns on ns.oid = rel.relnamespace
+where ns.nspname = 'public' and con.contype = 'c'
+order by rel.relname, con.conname;
+
+
+-- ── ③ 중복을 막는 조합 (unique) ──
+select
+  rel.relname                    as "테이블",
+  con.conname                    as "제약 이름",
+  pg_get_constraintdef(con.oid)  as "중복 불가 조합"
+from pg_constraint con
+join pg_class rel on rel.oid = con.conrelid
+join pg_namespace ns on ns.oid = rel.relnamespace
+where ns.nspname = 'public' and con.contype = 'u'
+order by rel.relname;
+
+
+-- ── ④ 뷰가 무엇을 계산하는지 ──
+select
+  table_name                     as "뷰",
+  view_definition                as "정의"
+from information_schema.views
+where table_schema = 'public'
+order by table_name;
+
+
+-- ── ⑤ 각 테이블에 데이터가 어느 기간까지 있는지 ──
+select 'sales_monthly' as 테이블, min(year||'-'||lpad(month::text,2,'0')) as 시작,
+       max(year||'-'||lpad(month::text,2,'0')) as 끝, count(*) as 행수 from sales_monthly
+union all select 'sales_pipeline', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from sales_pipeline
+union all select 'sales_rank', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from sales_rank
+union all select 'marketing_channel', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from marketing_channel
+union all select 'marketing_budget', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from marketing_budget
+union all select 'pl_monthly', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from pl_monthly
+union all select 'pl_cost', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from pl_cost
+union all select 'pl_margin', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from pl_margin
+union all select 'customer_monthly', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from customer_monthly
+union all select 'customer_cohort', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from customer_cohort
+union all select 'hr_monthly', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from hr_monthly
+union all select 'hr_team', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from hr_team
+union all select 'hr_tenure', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from hr_tenure
+union all select 'hr_overtime', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from hr_overtime
+union all select 'cash_monthly', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from cash_monthly
+union all select 'receivable', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from receivable
+union all select 'receivable_detail', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from receivable_detail
+union all select 'debt_monthly', min(year||'-'||lpad(month::text,2,'0')),
+       max(year||'-'||lpad(month::text,2,'0')), count(*) from debt_monthly
+order by 1;
