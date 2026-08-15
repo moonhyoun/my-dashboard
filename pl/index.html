@@ -553,12 +553,12 @@
 
     const cw=box.clientWidth||900;
     const narrow=cw<520;
-    const W=narrow?400:900, H=narrow?250:300;
-    const PL=narrow?4:56, PR=narrow?4:16, PT=narrow?34:44, PB=narrow?26:40;
+    const W=narrow?400:900, H=narrow?280:340;
+    const PL=narrow?4:56, PR=narrow?4:16, PT=narrow?30:38, PB=narrow?26:40;
     const iw=W-PL-PR, ih=H-PT-PB;
 
     /* 위쪽 26%는 이익률 선 전용, 아래쪽은 막대 전용 — 라벨이 겹치지 않게 */
-    const lineTop=PT+13, lineBot=PT+ih*0.26, barTop=PT+ih*0.40, barBot=PT+ih;
+    const lineTop=PT+ih*0.04, lineBot=PT+ih*0.37, barTop=PT+ih*0.47, barBot=PT+ih;
 
     const profits=list.map(d=>d.profit);
     const hi=Math.max.apply(null,profits.concat([1]))*1.08;
