@@ -100,6 +100,17 @@
   .nums .k{font-size:11.5px;color:var(--gray);font-weight:600}
   .nums .v{font-size:14px;font-weight:800;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:380px}
+  th,td{padding:8px 6px;text-align:right;border-bottom:1px solid #F1F4F9;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  th{font-size:11px;color:var(--gray);font-weight:600;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  tfoot td{font-weight:800;border-top:1px solid var(--line);border-bottom:0;background:#FAFAFC}
+  .agetag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;color:#fff}
+  .rbar{display:inline-block;width:42px;height:6px;border-radius:99px;background:#F1F4F9;
+    overflow:hidden;margin-right:7px;vertical-align:1px}
+  .rbar i{display:block;height:100%;background:var(--pt);border-radius:99px}
   .loading{color:var(--gray);font-size:13px;padding:20px 0}
   @media (max-width:1000px){ .signals{grid-template-columns:repeat(3,1fr)} }
   @media (max-width:900px){ .grid2{grid-template-columns:1fr} }
@@ -175,6 +186,28 @@
     </div>
   </section>
 
+  <section class="grid2">
+    <div class="panel">
+      <h2>미수금 거래처</h2>
+      <p class="hint" id="rd-hint">받아야 할 돈이 어디에 묶여 있는지 봅니다.</p>
+      <div class="tablewrap" id="rd-table"></div>
+      <div id="rd-note"></div>
+    </div>
+    <div class="panel">
+      <h2>미수금 연령</h2>
+      <p class="hint" id="age-hint">오래된 돈일수록 회수가 어려워집니다.</p>
+      <div id="age-chart" class="loading">불러오는 중…</div>
+      <div class="legend">
+        <span><i style="background:#C6D2DB"></i>기한 전</span>
+        <span><i style="background:#F0C89A"></i>30일 이내</span>
+        <span><i style="background:#E29B4E"></i>30~60일</span>
+        <span><i style="background:#D2691E"></i>60~90일</span>
+        <span><i style="background:#C0392B"></i>90일 초과</span>
+      </div>
+      <div id="age-note"></div>
+    </div>
+  </section>
+
   <div class="panel">
     <h2>월별 현금 흐름</h2>
     <p class="hint" id="cf-hint">위 막대는 들어온 돈, 아래 막대는 나간 돈, 선은 월말 잔고입니다.</p>
@@ -232,7 +265,7 @@
   const lastOf=a=>a.length?a[a.length-1]:null;
 
   async function load(){
-    const [sm, mc, mb, cu, pm, pc, hm, cs, ar, tg] = await Promise.all([
+    const [sm, mc, mb, cu, pm, pc, hm, cs, ar, tg, rd, dm] = await Promise.all([
       db.from('sales_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('marketing_channel').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('marketing_budget').select('*'),
@@ -242,13 +275,17 @@
       db.from('hr_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('cash_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('receivable').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
-      db.from('exec_target').select('*').order('sort_order',{ascending:true})
+      db.from('exec_target').select('*').order('sort_order',{ascending:true}),
+      db.from('receivable_detail').select('*'),
+      db.from('debt_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true})
     ]);
     const e=sm.error||mc.error||mb.error||cu.error||pm.error||pc.error||hm.error||cs.error||ar.error||tg.error;
     if(e) throw e;
     return { sales:sm.data||[], mkt:mc.data||[], mbudget:mb.data||[], cust:cu.data||[],
              pl:pm.data||[], cost:pc.data||[], hr:hm.data||[], cash:cs.data||[],
-             ar:ar.data||[], target:tg.data||[] };
+             ar:ar.data||[], target:tg.data||[],
+             rdetail:(rd&&!rd.error)?(rd.data||[]):[],
+             debt:(dm&&!dm.error)?(dm.data||[]):[] };
   }
 
   function buildYears(){
@@ -314,11 +351,16 @@
   }
 
   function runwayOf(cashList){
-    if(!cashList.length) return {value:Infinity, avg:0, closing:0};
+    if(!cashList.length) return {value:Infinity, avg:0, closing:0, due:0, valueRaw:Infinity};
     const l=cashList[cashList.length-1];
     const last3=cashList.slice(Math.max(0,cashList.length-3));
     const avg=last3.reduce((a,d)=>a+d.net,0)/last3.length;
-    return { value: avg<0 ? l.closing/Math.abs(avg) : Infinity, avg, closing:l.closing };
+    /* 차입금 상환은 이미 유출에 포함돼 있지만, 앞으로 매달 나갈 고정 상환액을 따로 확인합니다 */
+    const d=(DATA.debt||[]).filter(x=>+x.year===year).sort((a,b)=>a.month-b.month);
+    const due=d.length?+d[d.length-1].monthly_due||0:0;
+    const bal=d.length?+d[d.length-1].balance||0:0;
+    return { value: avg<0 ? l.closing/Math.abs(avg) : Infinity,
+             avg, closing:l.closing, due, debt:bal };
   }
 
   /* ── 신호등 ── */
@@ -334,7 +376,8 @@
     if(p)  val.profit       ={month:p.month, actual:p.profit, target:p.targetProfit, txt:fmt(p.profit), sub:'이익률 '+pct(p.margin)};
     if(h)  val.payroll_share={month:h.month, actual:h.share, target:null, txt:pct(h.share), sub:'인원 '+cnt(h.head)+'명'};
     if(S.cash.length) val.runway={month:lastOf(S.cash).month, actual:isFinite(rw.value)?rw.value:999, target:null,
-      txt:isFinite(rw.value)?rw.value.toFixed(1)+'개월':'증가 중', sub:'잔고 '+fmtNum(rw.closing)};
+      txt:isFinite(rw.value)?rw.value.toFixed(1)+'개월':'증가 중',
+      sub:'잔고 '+fmtNum(rw.closing)+(rw.debt?(' · 차입 '+fmtNum(rw.debt)):'')};
 
     let html='';
     DATA.target.forEach(function(t){
@@ -568,6 +611,80 @@
       +'</b> · 회수기간 <b>'+f.dso.toFixed(0)+'일 → '+l.dso.toFixed(0)+'일</b>';
   }
 
+  /* ── 미수금 거래처 · 연령 ── */
+  const AGE=[
+    {k:'기한 전',   color:'#C6D2DB', test:d=>d<=0},
+    {k:'30일 이내', color:'#F0C89A', test:d=>d>0  && d<=30},
+    {k:'30~60일',   color:'#E29B4E', test:d=>d>30 && d<=60},
+    {k:'60~90일',   color:'#D2691E', test:d=>d>60 && d<=90},
+    {k:'90일 초과', color:'#C0392B', test:d=>d>90}
+  ];
+  const ageOf=d=>AGE.find(a=>a.test(d))||AGE[0];
+
+  function drawReceivable(y,m,arBal){
+    const rows=(DATA.rdetail||[]).filter(d=>+d.year===y && +d.month===m)
+      .sort((a,b)=>(+b.amount||0)-(+a.amount||0));
+    const box=document.getElementById('rd-table');
+    if(!rows.length){
+      box.innerHTML='<p class="loading">이 달의 거래처 자료가 없습니다.</p>';
+      document.getElementById('rd-note').innerHTML='';
+      document.getElementById('age-chart').className='';
+      document.getElementById('age-chart').innerHTML='<p class="loading">자료가 없습니다.</p>';
+      document.getElementById('age-note').innerHTML='';
+      return;
+    }
+    const total=rows.reduce((a,d)=>a+(+d.amount||0),0);
+    const mx=+rows[0].amount||1;
+    const body=rows.map(function(d){
+      const a=ageOf(+d.days_due||0);
+      return '<tr><td>'+esc(d.customer)+'</td>'
+        +'<td><span class="rbar"><i style="width:'+((+d.amount||0)/mx*100)+'%"></i></span>'+fmtNum(d.amount)+'</td>'
+        +'<td>'+pct(dv(+d.amount||0,total)*100,0)+'</td>'
+        +'<td><span class="agetag" style="background:'+a.color+'">'+a.k+'</span></td></tr>';
+    }).join('');
+    box.innerHTML='<table><thead><tr><th>거래처</th><th>미수금 ('+SUFFIX[unit]+')</th>'
+      +'<th>비중</th><th>연령</th></tr></thead><tbody>'+body+'</tbody>'
+      +'<tfoot><tr><td>합계</td><td>'+fmtNum(total)+'</td><td>100%</td><td></td></tr></tfoot></table>';
+
+    const top3=rows.slice(0,3).reduce((a,d)=>a+(+d.amount||0),0);
+    const share=dv(top3,total)*100;
+    const first=dv(+rows[0].amount||0,total)*100;
+    document.getElementById('rd-hint').innerHTML=
+      y+'년 '+m+'월 · 거래처 <b>'+rows.length+'곳</b> · 상위 3곳이 <b>'+pct(share,0)+'</b>';
+    document.getElementById('rd-note').innerHTML = first>=25
+      ? '<div class="note alert"><b>'+esc(rows[0].customer)+'</b> 한 곳이 미수금의 <b>'+pct(first,0)+'</b>입니다. '
+        +'이 한 건만 회수해도 현금이 <b>'+fmt(+rows[0].amount||0)+'</b> 들어옵니다.</div>'
+      : '<div class="note">특정 거래처 쏠림은 크지 않습니다. 상위 3곳이 '+pct(share,0)+'입니다.</div>';
+
+    /* 연령 막대 */
+    const buckets=AGE.map(function(a){
+      const amt=rows.filter(d=>ageOf(+d.days_due||0).k===a.k).reduce((x,d)=>x+(+d.amount||0),0);
+      return { k:a.k, color:a.color, amt };
+    });
+    const box2=document.getElementById('age-chart');
+    box2.className='';
+    const W=560,H=170,PL=8,PR=8,PT=14,PB=44, iw=W-PL-PR, ih=H-PT-PB;
+    const hi=Math.max.apply(null,buckets.map(b=>b.amt).concat([1]))*1.2;
+    const slot=iw/buckets.length, bw=Math.min(58,slot*0.6);
+    let g='';
+    buckets.forEach(function(b,i){
+      const cx=PL+slot*i+slot/2, h=(b.amt/hi)*ih, top=PT+ih-h;
+      g+='<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+Math.max(1,h)+'" rx="4" fill="'+b.color+'"/>';
+      g+='<text x="'+cx+'" y="'+(top-6)+'" text-anchor="middle" font-size="11" font-weight="800" fill="#2B3B4A">'+fmtNum(b.amt)+'</text>';
+      g+='<text x="'+cx+'" y="'+(H-24)+'" text-anchor="middle" font-size="10.5" fill="#64748B">'+b.k+'</text>';
+      g+='<text x="'+cx+'" y="'+(H-9)+'" text-anchor="middle" font-size="10" fill="#94A3B8">'+pct(dv(b.amt,total)*100,0)+'</text>';
+    });
+    box2.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="미수금 연령 분포">'+g+'</svg>';
+
+    const old90=buckets[4].amt, over=buckets.slice(1).reduce((a,b)=>a+b.amt,0);
+    document.getElementById('age-hint').innerHTML=
+      '기한을 넘긴 돈 <b>'+fmtNum(over)+'</b> · 그중 90일 초과 <b>'+fmtNum(old90)+'</b>';
+    document.getElementById('age-note').innerHTML = old90>0
+      ? '<div class="note alert">90일을 넘긴 <b>'+fmt(old90)+'</b>이 가장 위험합니다. '
+        +'이 구간은 시간이 갈수록 회수율이 급격히 떨어지므로 <b>지금 바로</b> 연락해야 합니다.</div>'
+      : '<div class="note">90일을 넘긴 미수금이 없습니다.</div>';
+  }
+
   /* ── 월별 현금 흐름 ── */
   function drawCashFlow(list, curMonth){
     const box=document.getElementById('cash-chart');
@@ -627,7 +744,11 @@
     drawTrend(S);
     const c=lastOf(S.cash);
     if(c){ drawBridge(c); drawAr(S.cash, c.month); drawCashFlow(S.cash, c.month);
-      document.getElementById('cash-tag').textContent=year+'년 '+c.month+'월 기준';
+      const rw2=runwayOf(S.cash);
+      document.getElementById('cash-tag').innerHTML=year+'년 '+c.month+'월 기준'
+        + (rw2.debt?(' · 차입금 <b style="color:var(--ink)">'+fmtNum(rw2.debt)+'</b>'
+                    +' · 매달 상환 <b style="color:var(--ink)">'+fmtNum(rw2.due)+'</b>'):'');
+      drawReceivable(year, c.month, c.arBal);
     }else{
       ['bridge','ar-chart','cash-chart'].forEach(id=>{
         const e=document.getElementById(id); e.className=''; e.innerHTML='<p class="loading">현금 자료가 없습니다.</p>';
