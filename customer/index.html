@@ -213,11 +213,12 @@
 
   let DATA=null, year=null, month=null, unit='man';
   const SUFFIX={man:'만원',mil:'백만원',won:'원'};
+  /* DB에는 원 단위로 저장됩니다. 보기 좋게 나눠서 표시만 바꿉니다. */
   function fmtNum(v){
     v=Number(v)||0;
-    if(unit==='man') return Math.round(v).toLocaleString('ko-KR');
-    if(unit==='mil') return (v/100).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
-    return Math.round(v*10000).toLocaleString('ko-KR');
+    if(unit==='man') return Math.round(v/10000).toLocaleString('ko-KR');
+    if(unit==='mil') return (v/1000000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+    return Math.round(v).toLocaleString('ko-KR');
   }
   const fmt=v=>fmtNum(v)+SUFFIX[unit];
   const cnt=n=>(Math.round(Number(n)||0)).toLocaleString('ko-KR');
@@ -276,7 +277,7 @@
     const mk=DATA.mkt.filter(d=>+d.year===y && +d.month===m && d.paid!==false);
     const spend=mk.reduce((a,d)=>a+(+d.spend||0),0);
     const conv =mk.reduce((a,d)=>a+(+d.conversions||0),0);
-    const cac  =conv?spend*10000/conv:0;                    // 원
+    const cac  =conv?spend/conv:0;                          // 원
 
     const active=+c.active_count||0;
     const churnRate=prevActive?(+c.churn_count||0)/prevActive:0;
@@ -293,7 +294,7 @@
       net:(+c.new_count||0)-(+c.churn_count||0),
       newRev:+c.new_revenue||0, revenue, repeatRev:Math.max(0,revenue-(+c.new_revenue||0)),
       churnRate:churnRate*100, arpu, cmRate:cmRate*100, ltv, life, cac,
-      ratio:cac?ltv*10000/cac:0 };
+      ratio:cac?ltv/cac:0 };
   }
 
 
