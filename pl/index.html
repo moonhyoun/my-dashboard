@@ -434,7 +434,7 @@
   function drawGauge(c){
     const box=document.getElementById('gauge');
     box.className='';
-    const W=300,H=186,cx=150,cy=150,r=112,MAX=150;
+    const W=300,H=168,cx=150,cy=138,r=94,MAX=150;
     const val=Math.max(0,Math.min(MAX,c.bepRate));
     const pol=v=>{ const a=Math.PI*(1-v/MAX); return [cx+r*Math.cos(a), cy-r*Math.sin(a)]; };
     const arc=(from,to,color,w)=>{
@@ -443,26 +443,26 @@
       return '<path d="M '+x1+' '+y1+' A '+r+' '+r+' 0 '+large+' 1 '+x2+' '+y2+
              '" fill="none" stroke="'+color+'" stroke-width="'+w+'" stroke-linecap="round"/>';
     };
-    let s=arc(0,MAX,'#F1F4F9',20);
-    if(val>0) s+=arc(0,val,c.bepRate>=100?'var(--pt)':'var(--neg)',20);
+    let s=arc(0,MAX,'#F1F4F9',17);
+    if(val>0) s+=arc(0,val,c.bepRate>=100?'var(--pt)':'var(--neg)',17);
 
     /* 100% 지점 표시 */
     const a=Math.PI*(1-100/MAX);
-    s+='<line x1="'+(cx+(r-14)*Math.cos(a))+'" y1="'+(cy-(r-14)*Math.sin(a))+
-       '" x2="'+(cx+(r+14)*Math.cos(a))+'" y2="'+(cy-(r+14)*Math.sin(a))+
+    s+='<line x1="'+(cx+(r-11)*Math.cos(a))+'" y1="'+(cy-(r-11)*Math.sin(a))+
+       '" x2="'+(cx+(r+11)*Math.cos(a))+'" y2="'+(cy-(r+11)*Math.sin(a))+
        '" stroke="#0F172A" stroke-width="2"/>';
-    s+='<text x="'+(cx+(r+22)*Math.cos(a))+'" y="'+(cy-(r+20)*Math.sin(a))+
-       '" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0F172A">본전 100%</text>';
+    s+='<text x="'+(cx+(r-42)*Math.cos(a))+'" y="'+(cy-(r-42)*Math.sin(a)+4)+
+       '" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0F172A">본전</text>';
 
     [0,50,100,150].forEach(function(t){
       const ta=Math.PI*(1-t/MAX);
-      s+='<text x="'+(cx+(r-32)*Math.cos(ta))+'" y="'+(cy-(r-32)*Math.sin(ta)+4)+
-         '" text-anchor="middle" font-size="9.5" fill="#94A3B8">'+t+'</text>';
+      s+='<text x="'+(cx+(r-27)*Math.cos(ta))+'" y="'+(cy-(r-27)*Math.sin(ta)+4)+
+         '" text-anchor="middle" font-size="9.5" font-weight="'+(t===100?700:400)+'" fill="'+(t===100?'#0F172A':'#94A3B8')+'">'+t+'</text>';
     });
 
-    s+='<text x="'+cx+'" y="'+(cy-14)+'" text-anchor="middle" font-size="34" font-weight="800" fill="'+
+    s+='<text x="'+cx+'" y="'+(cy-12)+'" text-anchor="middle" font-size="30" font-weight="800" fill="'+
        (c.bepRate>=100?'var(--pt)':'var(--neg)')+'">'+c.bepRate.toFixed(0)+'%</text>';
-    s+='<text x="'+cx+'" y="'+(cy+8)+'" text-anchor="middle" font-size="11.5" fill="#64748B">손익분기 달성률</text>';
+    s+='<text x="'+cx+'" y="'+(cy+7)+'" text-anchor="middle" font-size="11" fill="#64748B">손익분기 달성률</text>';
 
     box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="손익분기 달성률 게이지">'+s+'</svg>';
 
@@ -557,16 +557,19 @@
     const PL=narrow?4:56, PR=narrow?4:16, PT=narrow?34:44, PB=narrow?26:40;
     const iw=W-PL-PR, ih=H-PT-PB;
 
+    /* 위쪽 26%는 이익률 선 전용, 아래쪽은 막대 전용 — 라벨이 겹치지 않게 */
+    const lineTop=PT+13, lineBot=PT+ih*0.26, barTop=PT+ih*0.40, barBot=PT+ih;
+
     const profits=list.map(d=>d.profit);
-    const hi=Math.max.apply(null,profits.concat([1]))*1.3;
-    const lo=Math.min(0,Math.min.apply(null,profits))*1.35;
-    const ys=v=>PT+ih-((v-lo)/((hi-lo)||1))*ih;
+    const hi=Math.max.apply(null,profits.concat([1]))*1.08;
+    const lo=Math.min(0,Math.min.apply(null,profits))*1.2;
+    const ys=v=>barBot-((v-lo)/((hi-lo)||1))*(barBot-barTop);
 
     const tm=list[list.length-1].targetMargin||0;
     const margins=list.map(d=>d.margin);
-    const mHi=Math.max.apply(null,margins.concat([tm,1]))*1.45;
-    const mLo=Math.min(0,Math.min.apply(null,margins))*1.3;
-    const yr=v=>PT+ih-((v-mLo)/((mHi-mLo)||1))*ih;
+    const mHi=Math.max.apply(null,margins.concat([tm,1]))*1.12;
+    const mLo=Math.min(0,Math.min.apply(null,margins))*1.1;
+    const yr=v=>lineBot-((v-mLo)/((mHi-mLo)||1))*(lineBot-lineTop);
 
     const slot=iw/list.length, bw=Math.min(narrow?24:44,slot*0.5);
     let s='';
@@ -604,7 +607,7 @@
     list.forEach(function(d,i){
       const cx=PL+slot*i+slot/2, cy=yr(d.margin);
       s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(narrow?2:3)+'" fill="#fff" stroke="#0F172A" stroke-width="'+(narrow?1.2:1.6)+'"/>';
-      if(!narrow) s+='<text x="'+cx+'" y="'+(cy-9)+'" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0F172A">'+d.margin.toFixed(1)+'%</text>';
+      if(!narrow) s+='<text x="'+cx+'" y="'+(cy-8)+'" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0F172A">'+d.margin.toFixed(1)+'%</text>';
     });
 
     box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="월별 영업이익 추이">'+s+'</svg>';
