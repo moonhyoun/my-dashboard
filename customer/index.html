@@ -229,7 +229,7 @@
   async function load(){
     const [cu, co, pm, pc, mc, lv, rd] = await Promise.all([
       db.from('customer_monthly').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
-      db.from('customer_cohort').select('*'),
+      db.from('customer_cohort_v').select('*'),
       db.from('pl_monthly_v').select('*').order('year',{ascending:true}).order('month',{ascending:true}),
       db.from('pl_cost_v').select('*'),
       db.from('marketing_channel').select('year,month,paid,spend,conversions'),
