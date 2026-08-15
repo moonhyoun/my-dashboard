@@ -120,19 +120,29 @@
       <div class="path">/pl</div>
     </a>
 
-    <div class="card c-customer soon">
-      <span class="badge">준비 중</span>
+    <a class="card c-customer" href="/customer">
       <div class="dot"></div>
       <h2>고객</h2>
-      <p>신규와 이탈 고객, 재구매와 생애가치.</p>
-    </div>
+      <p>신규와 이탈, 코호트 잔존과 생애가치.</p>
+      <div class="stat">
+        <span class="k" id="k-cust">활성 고객</span>
+        <span class="big" id="v-cust">–</span>
+        <span class="sub" id="s-cust">&nbsp;</span>
+      </div>
+      <div class="path">/customer</div>
+    </a>
 
-    <div class="card c-hr soon">
-      <span class="badge">준비 중</span>
+    <a class="card c-hr" href="/hr">
       <div class="dot"></div>
       <h2>인사</h2>
-      <p>인원 현황과 채용·퇴사 추이.</p>
-    </div>
+      <p>인원과 인건비 비중, 근속과 초과근무.</p>
+      <div class="stat">
+        <span class="k" id="k-hr">재직 인원</span>
+        <span class="big" id="v-hr">–</span>
+        <span class="sub" id="s-hr">&nbsp;</span>
+      </div>
+      <div class="path">/hr</div>
+    </a>
 
     <a class="card c-exec" href="/exec">
       <div class="dot"></div>
@@ -167,7 +177,7 @@
 
   (async function(){
     try{
-      const [sm, mc, mb, pm, pc, cash] = await Promise.all([
+      const [sm, mc, mb, pm, pc, cash, cu, hr] = await Promise.all([
         db.from('sales_monthly').select('year,month,revenue,target')
           .order('year',{ascending:true}).order('month',{ascending:true}),
         db.from('marketing_channel').select('year,month,paid,spend,revenue,conversions')
@@ -177,9 +187,13 @@
           .order('year',{ascending:true}).order('month',{ascending:true}),
         db.from('pl_cost_v').select('year,month,amount'),
         db.from('cash_monthly').select('year,month,opening,closing')
+          .order('year',{ascending:true}).order('month',{ascending:true}),
+        db.from('customer_monthly').select('year,month,new_count,churn_count,active_count')
+          .order('year',{ascending:true}).order('month',{ascending:true}),
+        db.from('hr_monthly').select('year,month,headcount,hired,resigned')
           .order('year',{ascending:true}).order('month',{ascending:true})
       ]);
-      const err = sm.error||mc.error||mb.error||pm.error||pc.error||cash.error;
+      const err = sm.error||mc.error||mb.error||pm.error||pc.error||cash.error||cu.error||hr.error;
       if(err) throw err;
 
       /* ── 영업 ── */
@@ -234,6 +248,27 @@
         set('s-exec', '이번 달 <b>'+(net>=0?'+':'−')+won(Math.abs(net))+'</b>');
       }
 
+      /* ── 고객 ── */
+      const uRows = cu.data||[];
+      const u = last(uRows);
+      if(u){
+        const net=(+u.new_count||0)-(+u.churn_count||0);
+        set('k-cust', u.month+'월말 활성 고객');
+        set('v-cust', (Math.round(+u.active_count||0)).toLocaleString('ko-KR')+'명');
+        set('s-cust', '순증 <b>'+(net>=0?'+':'−')+Math.abs(net).toLocaleString('ko-KR')+'명</b>'
+          + ' · 신규 '+(+u.new_count||0)+' · 이탈 '+(+u.churn_count||0));
+      }
+
+      /* ── 인사 ── */
+      const hRows = hr.data||[];
+      const hh = last(hRows);
+      if(hh){
+        const payShare = (p && p.revenue) ? null : null;
+        set('k-hr', hh.month+'월말 재직 인원');
+        set('v-hr', (Math.round(+hh.headcount||0)).toLocaleString('ko-KR')+'명');
+        set('s-hr', '입사 <b>'+(+hh.hired||0)+'</b> · 퇴사 <b>'+(+hh.resigned||0)+'</b>');
+      }
+
       /* ── 기준 시점 ── */
       const parts=[];
       if(s)     parts.push('영업 '+s.year+'년 '+s.month+'월');
@@ -247,7 +282,7 @@
       n.className='notice on';
       n.textContent='핵심 숫자를 불러오지 못했습니다. ('+(e.message||e)+') 각 대시보드는 정상적으로 열립니다.';
       document.getElementById('asof').textContent='숫자 불러오기 실패';
-      ['s-sales','s-mkt','s-pl','s-exec'].forEach(id=>set(id,'&nbsp;'));
+      ['s-sales','s-mkt','s-pl','s-exec','s-cust','s-hr'].forEach(id=>set(id,'&nbsp;'));
     }
   })();
 </script>
