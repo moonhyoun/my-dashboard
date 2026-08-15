@@ -114,6 +114,16 @@
   .fbox{height:76px;display:flex;align-items:flex-end}
   .fbar{width:100%;border-radius:5px 5px 0 0;background:var(--blue)}
   .fstage .ct{display:block;font-size:11.5px;color:var(--gray);margin-top:6px;font-variant-numeric:tabular-nums}
+  .fstage .am{display:block;font-size:11.5px;font-weight:700;color:var(--ink);margin-top:2px;
+    font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ffoot2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    margin-top:10px;font-size:12px;color:var(--gray)}
+  .ffoot2 b{color:var(--ink);font-weight:700}
+  .conc{display:flex;align-items:center;gap:8px;margin:-6px 0 14px;font-size:11.5px;color:var(--gray)}
+  .conc .tr{flex:0 0 70px;height:6px;border-radius:99px;background:#F1F4F9;overflow:hidden}
+  .conc .tr i{display:block;height:100%;background:var(--blue);border-radius:99px}
+  .conc b{color:var(--ink);font-weight:700}
+  .yoy{font-weight:700}
   .fconv{flex:0 0 auto;padding:0 5px 28px;font-size:11px;font-weight:700;color:var(--gray);white-space:nowrap}
   .ffoot{display:flex;justify-content:space-between;align-items:center;gap:10px;
     border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
@@ -163,6 +173,7 @@
         <span class="rl">목표 대비</span>
         <span class="rv" id="c-rate">–</span>
       </div>
+      <div class="foot" id="c-rev-yoy"></div>
     </div>
 
     <div class="card">
@@ -214,6 +225,7 @@
           <button data-n="0" aria-pressed="false">전체</button>
         </div>
       </div>
+      <div class="conc" id="conc-person"></div>
       <ol class="rank" id="rank-person"><li class="loading">불러오는 중…</li></ol>
     </div>
 
@@ -234,13 +246,14 @@
           <button data-n="0" aria-pressed="false">전체</button>
         </div>
       </div>
+      <div class="conc" id="conc-product"></div>
       <ol class="rank" id="rank-product"><li class="loading">불러오는 중…</li></ol>
     </div>
   </section>
 
   <div class="panel">
     <h2>영업 단계</h2>
-    <p class="hint">단계 사이 숫자는 다음 단계로 넘어간 비율</p>
+    <p class="hint" id="funnel-hint">단계 사이 숫자는 다음 단계로 넘어간 비율</p>
     <div id="chart-funnel" class="loading">불러오는 중…</div>
   </div>
 </div>
@@ -325,7 +338,18 @@
   }
 
   /* ── 카드 ───────────────────────────────────────── */
-  function drawCards(rows, pipe, selM){
+  /* 전년 동월 대비 */
+  function yoy(now, before, f, suffix, onDark){
+    if(before===null||before===undefined||!before) return '전년 동월 자료 없음';
+    const d=now-before, r=d/before*100;
+    if(Math.abs(r)<0.05) return '전년 동월과 동일';
+    const good=d>0;
+    const color = onDark ? '#fff' : (good?'var(--blue)':'#94A3B8');
+    return '전년 대비 <span class="yoy" style="color:'+color+'">'+(good?'▲':'▼')+' '
+         + f(Math.abs(d))+(suffix||'')+' ('+(good?'+':'−')+Math.abs(r).toFixed(1)+'%)</span>';
+  }
+
+  function drawCards(rows, pipe, selM, prevYear){
     const doneAll = rows.filter(d => d.revenue !== null && d.revenue !== undefined);
     const cur = doneAll.find(d => +d.month === selM) || doneAll[doneAll.length-1] || rows[0]
               || {month:'-',revenue:0,target:0,deals:0};
@@ -333,7 +357,9 @@
     const rev = +cur.revenue||0, tgt = +cur.target||0, deals = +cur.deals||0;
     const rate = tgt ? rev/tgt*100 : 0;
     const left = tgt - rev;
-    const yearDeals = pipe.length ? +pipe[pipe.length-1].count||0 : done.reduce((s,d)=>s+(+d.deals||0),0);
+    const yearDeals = done.reduce((s,d)=>s+(+d.deals||0),0);
+    const py = prevYear ? prevYear.find(d=>+d.month===+cur.month) : null;
+    const pyDone = prevYear ? prevYear.filter(d=>d.revenue!==null&&d.revenue!==undefined&&+d.month<=+cur.month) : [];
 
     document.getElementById('c-rev-l').textContent  = cur.month + '월 매출';
     document.getElementById('c-rev').textContent    = fmt(rev);
@@ -343,7 +369,10 @@
     document.getElementById('c-left').textContent   = left > 0 ? '남은 금액 ' + fmt(left) : '목표 초과 ' + fmt(-left);
     document.getElementById('c-deal-l').textContent = cur.month + '월 계약';
     document.getElementById('c-deal').textContent   = deals ? cnt(deals)+'건' : '–';
-    document.getElementById('c-deal-f').textContent = year + '년 누적 ' + cnt(yearDeals) + '건';
+    document.getElementById('c-deal-f').innerHTML = year + '년 누적 ' + cnt(yearDeals) + '건<br>'
+      + yoy(deals, py?+py.deals||0:null, v=>Math.round(v).toLocaleString('ko-KR'), '건');
+    document.getElementById('c-rev-yoy').innerHTML =
+      yoy(rev, py?+py.revenue||0:null, fmtNum, SUFFIX[unit], true);
 
     /* 누적 매출 */
     const sumR  = done.reduce((a,d)=>a+(+d.revenue||0),0);
@@ -356,7 +385,8 @@
     document.getElementById('c-sum-f').innerHTML =
       range + ' · 달성률 <b style="color:var(--blue)">' + sumRate.toFixed(0) + '%</b>'
       + '<br>목표 ' + fmtNum(sumT)
-      + '<br>연간 ' + fmtNum(yearT);
+      + '<br>연간 ' + fmtNum(yearT)
+      + '<br>' + yoy(sumR, pyDone.length?pyDone.reduce((a,d)=>a+(+d.revenue||0),0):null, fmtNum, SUFFIX[unit]);
 
     const b1 = document.getElementById('c-bar'), b2 = document.getElementById('c-sum-bar');
     b1.style.width = '0%'; b2.style.width = '0%';
@@ -447,12 +477,13 @@
   }
 
   /* ── 영업 단계 (가로형) ─────────────────────────── */
-  function drawFunnel(rows){
+  function drawFunnel(rows, selM){
     const box=document.getElementById('chart-funnel');
     box.className='';
     if(!rows.length){ box.innerHTML='<p class="loading">데이터가 없습니다.</p>'; return; }
 
     const first=+rows[0].count||1;
+    const firstAmt=+rows[0].amount||0;
     let h='<div class="funnel">';
     rows.forEach(function(d,i){
       const c=+d.count||0;
@@ -460,7 +491,8 @@
       const op=(1-i/Math.max(rows.length,2)*0.5).toFixed(2);
       h+='<div class="fstage"><span class="nm">'+esc(d.stage)+'</span>'
        + '<div class="fbox"><div class="fbar" style="height:'+bh+'px;opacity:'+op+'"></div></div>'
-       + '<span class="ct">'+cnt(c)+'건</span></div>';
+       + '<span class="ct">'+cnt(c)+'건</span>'
+       + '<span class="am">'+fmtNum(d.amount)+'</span></div>';
       if(i<rows.length-1){
         const nx=+rows[i+1].count||0;
         const p=c?(nx/c*100).toFixed(1):'0.0';
@@ -469,14 +501,38 @@
     });
     h+='</div>';
 
-    const last=+rows[rows.length-1].count||0;
+    const lastRow=rows[rows.length-1];
+    const last=+lastRow.count||0;
+    const lastAmt=+lastRow.won_amount||+lastRow.amount||0;
     const total=first?(last/first*100).toFixed(1):'0.0';
-    h+='<div class="ffoot"><span class="lb">최종 전환율 · '+esc(rows[0].stage)+' → '+esc(rows[rows.length-1].stage)+'</span>'
+    const totalAmt=firstAmt?(lastAmt/firstAmt*100).toFixed(1):'0.0';
+    const unit=last?lastAmt/last:0;
+
+    h+='<div class="ffoot"><span class="lb">최종 전환율 · '+esc(rows[0].stage)+' → '+esc(lastRow.stage)+' (건수)</span>'
      + '<span class="vl">'+total+'%</span></div>';
+    h+='<div class="ffoot2"><span>금액 기준 전환율 <b>'+totalAmt+'%</b></span>'
+     + '<span>계약 단가 <b>'+fmt(unit)+'</b></span></div>';
     box.innerHTML=h;
+    document.getElementById('funnel-hint').textContent=
+      year+'년 '+selM+'월 유입 기준 · 아래 금액은 각 단계에 걸린 예상 계약금액입니다.';
   }
 
   /* ── 순위 ───────────────────────────────────────── */
+  function drawConc(id, rows, label){
+    const el=document.getElementById(id);
+    if(!el) return;
+    if(rows.length<2){ el.innerHTML=''; return; }
+    const total=rows.reduce((a,d)=>a+(+d.amount||0),0);
+    const k=Math.min(3, rows.length);
+    const top=rows.slice(0,k).reduce((a,d)=>a+(+d.amount||0),0);
+    const share=total?top/total*100:0;
+    const warn = share>=60
+      ? ' 한쪽에 쏠려 있어 이탈 시 타격이 큽니다.'
+      : (share<=40 ? ' 고르게 분산되어 있습니다.' : '');
+    el.innerHTML='<span class="tr"><i style="width:'+Math.min(100,share)+'%"></i></span>'
+      +'<span>상위 '+k+label+'이 전체의 <b>'+share.toFixed(0)+'%</b>'+warn+'</span>';
+  }
+
   function drawRank(id, rows, n){
     const el=document.getElementById(id);
     const all=rows.length;
@@ -514,21 +570,27 @@
   function render(){
     if(!DATA) return;
     const monthly  = DATA.monthly.filter(d=>+d.year===year).sort((a,b)=>a.month-b.month);
-    const pipeline = DATA.pipeline.filter(d=>+d.year===year).sort((a,b)=>a.sort_order-b.sort_order);
+    const prevYear = DATA.monthly.filter(d=>+d.year===year-1).sort((a,b)=>a.month-b.month);
     const rank     = DATA.rank.filter(d=>+d.year===year);
 
     const done = monthly.filter(d=>d.revenue!==null&&d.revenue!==undefined);
     const curMonth = (month && done.some(d=>+d.month===month))
       ? month : (done.length ? +done[done.length-1].month : null);
 
-    drawCards(monthly, pipeline, curMonth);
+    const pipeline = DATA.pipeline
+      .filter(d=>+d.year===year && (d.month===undefined || +d.month===curMonth))
+      .sort((a,b)=>a.sort_order-b.sort_order);
+
+    drawCards(monthly, pipeline, curMonth, prevYear);
     drawBars(monthly, curMonth);
-    drawFunnel(pipeline);
+    drawFunnel(pipeline, curMonth);
 
     const rsP = rankRows(rank,'person',  perPerson,  curMonth);
     const rsQ = rankRows(rank,'product', perProduct, curMonth);
     const rp = drawRank('rank-person',  rsP.rows, topPerson);
     const rq = drawRank('rank-product', rsQ.rows, topProduct);
+    drawConc('conc-person',  rsP.rows, '명');
+    drawConc('conc-product', rsQ.rows, '개 품목');
 
     function hint(r, rs, mode){
       if(!r || !r.all) return '데이터가 없습니다.';
@@ -606,8 +668,10 @@
           mk(2026,10,null,9500,null),mk(2026,11,null,9500,null),mk(2026,12,null,9500,null)
         ],
         pipeline:[
-          {year:2026,sort_order:1,stage:'문의',count:6900},{year:2026,sort_order:2,stage:'견적',count:3170},
-          {year:2026,sort_order:3,stage:'협상',count:1680},{year:2026,sort_order:4,stage:'계약',count:993}
+          {year:2026,month:7,sort_order:1,stage:'문의',count:614,amount:32700},
+          {year:2026,month:7,sort_order:2,stage:'견적',count:282,amount:15020},
+          {year:2026,month:7,sort_order:3,stage:'협상',count:149,amount:7940},
+          {year:2026,month:7,sort_order:4,stage:'계약',count:159,amount:8470,won_amount:8470}
         ],
         rank:[
           {year:2026,month:7,kind:'person',name:'김도현',amount:2010},
