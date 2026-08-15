@@ -572,7 +572,9 @@
      + '<span>계약 단가 <b>'+fmt(unitPrice)+'</b></span></div>';
     box.innerHTML=h;
     document.getElementById('funnel-hint').innerHTML=
-      year+'년 '+selM+'월 유입 기준 · 건수 아래 숫자는 각 단계에 걸린 <b>예상 계약금액 ('+SUFFIX[unit]+')</b>입니다.';
+      year+'년 '+selM+'월 · 건수 아래 숫자는 각 단계에 걸린 <b>예상 계약금액 ('+SUFFIX[unit]+')</b>입니다.'
+      +'<br><span style="color:#B45309">같은 달 숫자끼리 나눈 값입니다. 7월에 계약된 건은 대부분 5~6월에 들어온 문의라, '
+      +'실제 전환율과는 차이가 있습니다.</span>';
   }
 
   /* ── 순위 ───────────────────────────────────────── */
