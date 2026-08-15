@@ -111,11 +111,41 @@
   .rbar{display:inline-block;width:42px;height:6px;border-radius:99px;background:#F1F4F9;
     overflow:hidden;margin-right:7px;vertical-align:1px}
   .rbar i{display:block;height:100%;background:var(--pt);border-radius:99px}
+  .ph{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .printbtn{font:inherit;font-size:12px;font-weight:600;color:var(--gray);background:#fff;
+    border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+  .printbtn:hover{color:var(--pt);border-color:var(--pt-mid)}
+  .chk{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .chk li{display:flex;align-items:center;gap:9px;border:1px solid var(--line);
+    border-radius:10px;padding:11px 13px;min-width:0}
+  .chk .dot{width:9px;height:9px;border-radius:99px;flex:0 0 auto}
+  .chk .nm{font-size:12.5px;font-weight:700;white-space:nowrap}
+  .chk .ds{font-size:11.5px;color:var(--gray);margin-left:auto;white-space:nowrap}
+  .chk li.miss{border-color:#F2C4BE;background:#FCEEEC}
+  .chk li.miss .ds{color:var(--bad);font-weight:700}
+  @media (max-width:760px){ .chk{grid-template-columns:1fr} }
   .loading{color:var(--gray);font-size:13px;padding:20px 0}
   @media (max-width:1000px){ .signals{grid-template-columns:repeat(3,1fr)} }
   @media (max-width:900px){ .grid2{grid-template-columns:1fr} }
   @media (max-width:560px){ .signals{grid-template-columns:repeat(2,1fr)} }
   @media (max-width:520px){ body{padding:20px 12px 48px} .panel{padding:14px} }
+
+  /* 마감 상태 안내 */
+  .pending{display:none;margin-bottom:14px;padding:11px 14px;border-radius:10px;
+    background:#F8FAFC;border:1px solid var(--line);color:#475569;font-size:12.5px;line-height:1.6}
+  .pending.on{display:block}
+  .pending b{color:var(--ink);font-weight:700}
+
+  /* 인쇄 · PDF 저장 */
+  @media print{
+    body{padding:0;font-size:11px}
+    .controls,.notice,a.back,.noprint{display:none !important}
+    .panel,.card,.sig{break-inside:avoid;page-break-inside:avoid;box-shadow:none}
+    .panel{border-color:#D8DEE6}
+    a{text-decoration:none;color:inherit}
+    .tablewrap,.cowrap,.scroller{overflow:visible !important}
+    table{min-width:0 !important}
+  }
 </style>
 </head>
 <body>
@@ -136,8 +166,18 @@
   </div>
 
   <div class="notice" id="notice"></div>
+  <div class="pending" id="pending"></div>
 
   <section class="signals" id="signals"></section>
+
+  <div class="panel noprint" id="check-panel">
+    <div class="ph">
+      <h2>이번 달 입력 점검</h2>
+      <button class="printbtn" onclick="window.print()">인쇄 · PDF 저장</button>
+    </div>
+    <p class="hint" id="check-hint">각 영역에 이번 달 숫자가 들어왔는지 확인합니다.</p>
+    <div id="check-list"></div>
+  </div>
 
   <section class="grid2">
     <div class="panel">
@@ -363,6 +403,31 @@
              avg, closing:l.closing, due, debt:bal };
   }
 
+
+  /* ── 마감 상태 안내 ────────────────────────────
+     오늘 기준으로 지나간 달인데 데이터가 없으면 '누락',
+     아직 진행 중이거나 갓 끝난 달이면 '마감 전'으로 구분합니다. */
+  function showPending(latestYear, latestMonth, label){
+    const el=document.getElementById('pending');
+    if(!el) return;
+    if(!latestMonth){ el.className='pending'; el.innerHTML=''; return; }
+    const now=new Date();
+    const nowY=now.getFullYear(), nowM=now.getMonth()+1, day=now.getDate();
+    const gap=(nowY-latestYear)*12 + (nowM-latestMonth);
+    if(gap<=0){ el.className='pending'; el.innerHTML=''; return; }
+
+    /* 직전 달이고 아직 10일 이전이면 정상적인 마감 대기 */
+    const closing = (gap===1 && day<=10);
+    if(closing){
+      el.className='pending on';
+      el.innerHTML='<b>'+nowM+'월은 아직 마감 전입니다.</b> 화면은 '+latestMonth+'월까지의 확정 숫자를 보여줍니다.';
+    }else{
+      el.className='pending on';
+      el.innerHTML='<b>'+latestMonth+'월 이후 '+gap+'개월치가 비어 있습니다.</b> '
+        +(label||'해당 테이블')+'에 '+nowY+'년 '+nowM+'월까지 입력했는지 확인해 주세요.';
+    }
+  }
+
   /* ── 신호등 ── */
   function drawSignals(S){
     const box=document.getElementById('signals');
@@ -378,6 +443,16 @@
     if(S.cash.length) val.runway={month:lastOf(S.cash).month, actual:isFinite(rw.value)?rw.value:999, target:null,
       txt:isFinite(rw.value)?rw.value.toFixed(1)+'개월':'증가 중',
       sub:'잔고 '+fmtNum(rw.closing)+(rw.debt?(' · 차입 '+fmtNum(rw.debt)):'')};
+
+    /* 기준값이 뒤집혀 있으면 판정이 반대로 나오므로 먼저 경고합니다 */
+    const badRule=DATA.target.filter(t=>+t.green < +t.yellow || +t.green<=0 || +t.yellow<=0);
+    if(badRule.length){
+      const n=document.getElementById('notice');
+      n.className='notice on';
+      n.textContent='신호등 기준이 잘못된 항목이 있습니다: '
+        + badRule.map(t=>t.area).join(', ')
+        + ' — exec_target 에서 green 이 yellow 보다 크거나 같아야 합니다.';
+    }
 
     let html='';
     DATA.target.forEach(function(t){
@@ -435,6 +510,47 @@
     if(p) parts.push('손익 '+p.month+'월'); if(cu) parts.push('고객 '+cu.month+'월');
     if(h) parts.push('인사 '+h.month+'월'); if(S.cash.length) parts.push('현금 '+lastOf(S.cash).month+'월');
     document.getElementById('asof').textContent=year+'년 · 영역별 최신 마감 기준 — '+parts.join(' · ');
+  }
+
+  /* ── 이번 달 입력 점검 ── */
+  function drawCheck(){
+    const now=new Date();
+    const nowY=now.getFullYear(), nowM=now.getMonth()+1, day=now.getDate();
+    /* 마감 기준: 매달 10일까지는 지난달을 아직 채우는 중으로 봅니다 */
+    const tY = day<=10 ? (nowM===1?nowY-1:nowY) : nowY;
+    const tM = day<=10 ? (nowM===1?12:nowM-1)   : nowM;
+
+    const latest=(rows,f)=>{
+      const d=(rows||[]).filter(f||(()=>true))
+        .slice().sort((a,b)=>(a.year-b.year)||(a.month-b.month));
+      return d.length?d[d.length-1]:null;
+    };
+    const items=[
+      {nm:'영업 매출',   l:latest(DATA.sales, d=>d.revenue!==null&&d.revenue!==undefined), t:'sales_monthly'},
+      {nm:'마케팅 광고비',l:latest(DATA.mkt),                        t:'marketing_channel'},
+      {nm:'손익 비용',   l:latest(DATA.pl, d=>d.revenue!==null&&d.revenue!==undefined),   t:'pl_monthly'},
+      {nm:'고객 수',     l:latest(DATA.cust),                        t:'customer_monthly'},
+      {nm:'인사 인원',   l:latest(DATA.hr),                          t:'hr_monthly'},
+      {nm:'현금 잔고',   l:latest(DATA.cash),                        t:'cash_monthly'}
+    ];
+
+    let missing=0;
+    const html=items.map(function(it){
+      if(!it.l){ missing++; return '<li class="miss"><span class="dot" style="background:var(--bad)"></span>'
+        +'<span class="nm">'+it.nm+'</span><span class="ds">자료 없음</span></li>'; }
+      const gap=(tY-(+it.l.year))*12 + (tM-(+it.l.month));
+      const ok = gap<=0;
+      if(!ok) missing++;
+      return '<li class="'+(ok?'':'miss')+'">'
+        +'<span class="dot" style="background:'+(ok?'var(--ok)':'var(--bad)')+'"></span>'
+        +'<span class="nm">'+it.nm+'</span>'
+        +'<span class="ds">'+(+it.l.month)+'월까지'+(ok?'':' · '+gap+'개월 밀림')+'</span></li>';
+    }).join('');
+
+    document.getElementById('check-list').innerHTML='<ul class="chk">'+html+'</ul>';
+    document.getElementById('check-hint').innerHTML= missing
+      ? '기준 <b>'+tY+'년 '+tM+'월</b> · <b style="color:var(--bad)">'+missing+'개 영역</b>이 아직 입력되지 않았습니다.'
+      : '기준 <b>'+tY+'년 '+tM+'월</b> · 모든 영역이 입력되어 있습니다.';
   }
 
   /* ── 이번 달 변화 TOP3 ── */
@@ -739,8 +855,11 @@
   function render(){
     if(!DATA) return;
     const S=series();
+    (function(){ const d=DATA.cash.slice().sort((a,b)=>(a.year-b.year)||(a.month-b.month));
+      const l=d[d.length-1]; showPending(l?+l.year:0, l?+l.month:0, 'cash_monthly'); })();
     drawSignals(S);
     drawChanges(S);
+    drawCheck();
     drawTrend(S);
     const c=lastOf(S.cash);
     if(c){ drawBridge(c); drawAr(S.cash, c.month); drawCashFlow(S.cash, c.month);
